@@ -1,0 +1,38 @@
+name: Borrar Historial Completo
+
+on:
+  workflow_dispatch:
+
+jobs:
+  delete-history:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Clonar repositorio
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configurar identidad de Git
+        run: |
+          git config user.name "JulioC9808-ops"
+          git config user.email "julio@example.com"
+
+      - name: Reset duro del historial
+        run: |
+          git checkout --orphan nueva-rama
+          git add -A
+          git commit -m "Historial limpiado por JulioC9808-ops"
+          git branch -D main || true
+          git branch -m main
+
+      - name: Asegurar remoto origin
+        run: |
+          git remote remove origin || true
+          git remote add origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+
+      - name: Push forzado del nuevo historial
+        run: |
+          git push origin main --force

@@ -1,0 +1,176 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { AppNav } from "@/components/AppNav";
+import { useAuth } from "@/hooks/useAuth";
+import { useProfile } from "@/hooks/useProfile";
+import { supabase } from "@/integrations/supabase/client";
+import { FLAGS, TABLE_THEMES, getTheme } from "@/lib/domino/themes";
+import { unlocksFor, getSkin } from "@/lib/domino/levels";
+import { cn } from "@/lib/utils";
+
+export const Route = createFileRoute("/ajustes")({
+  ssr: false,
+  head: () => ({
+    meta: [
+      { title: "Ajustes y personalización | Domino" },
+      {
+        name: "description",
+        content:
+          "Cambia tu nombre, bandera de la mesa, tema, diseño de fichas y marco según tu nivel en Domino.",
+      },
+      { property: "og:title", content: "Ajustes de Domino" },
+      { property: "og:description", content: "Personaliza tu mesa, bandera y fichas." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
+  component: Ajustes,
+});
+
+function Ajustes() {
+  const { user } = useAuth();
+  const { profile, update, progress } = useProfile(user?.id);
+
+  if (!user) {
+    return (
+      <main className="mx-auto w-full max-w-3xl px-4 py-6">
+        <AppNav />
+        <p className="text-sm text-muted-foreground">Entra con tu cuenta para ver los ajustes.</p>
+        <Link to="/auth" className="mt-3 inline-flex rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground">
+          Iniciar sesión
+        </Link>
+      </main>
+    );
+  }
+
+  const level = progress.level;
+
+  return (
+    <main className="mx-auto w-full max-w-3xl px-4 py-6">
+      <AppNav />
+      <h1 className="font-display text-3xl font-extrabold">Ajustes</h1>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Nivel {level} · ID {profile?.player_code ?? "—"}
+      </p>
+
+      <section className="glass-panel mt-5 grid gap-3 rounded-2xl p-4">
+        <label className="text-xs uppercase tracking-widest text-muted-foreground">Nombre</label>
+        <input
+          defaultValue={profile?.username ?? ""}
+          onBlur={(e) => void update({ username: e.target.value.trim().slice(0, 24) })}
+          className="rounded-xl border border-input bg-card px-3 py-2 text-sm"
+        />
+        <label className="text-xs uppercase tracking-widest text-muted-foreground">
+          Bandera de la mesa
+        </label>
+        <select
+          value={profile?.flag ?? "cu"}
+          onChange={(e) => void update({ flag: e.target.value })}
+          className="rounded-xl border border-input bg-card px-3 py-2 text-sm"
+        >
+          {FLAGS.map((f) => (
+            <option key={f.code} value={f.code}>
+              {f.emoji} {f.label}
+            </option>
+          ))}
+        </select>
+      </section>
+
+      <Unlock
+        title="Tema de mesa"
+        kind="theme"
+        level={level}
+        current={profile?.table_theme ?? "habana"}
+        onPick={(id) => void update({ table_theme: id })}
+        preview={(id) => (
+          <span
+            className="block h-6 w-6 rounded-full"
+            style={{ background: getTheme(id).felt }}
+          />
+        )}
+      />
+
+      <Unlock
+        title="Diseño de fichas"
+        kind="skin"
+        level={level}
+        current={profile?.tile_skin ?? "hueso"}
+        onPick={(id) => void update({ tile_skin: id })}
+        preview={(id) => (
+          <span
+            className="block h-6 w-6 rounded-md"
+            style={{ background: getSkin(id).bone }}
+          />
+        )}
+      />
+
+      <Unlock
+        title="Marco de avatar"
+        kind="frame"
+        level={level}
+        current={profile?.frame ?? "none"}
+        onPick={(id) => void update({ frame: id })}
+      />
+
+      <Unlock
+        title="Título"
+        kind="title"
+        level={level}
+        current={profile?.title ?? "novato"}
+        onPick={(id) => void update({ title: id })}
+      />
+
+      <button
+        onClick={() => void supabase.auth.signOut()}
+        className="mt-6 rounded-full border border-border px-5 py-2 text-sm font-semibold text-destructive"
+      >
+        Cerrar sesión
+      </button>
+    </main>
+  );
+}
+
+function Unlock({
+  title,
+  kind,
+  level,
+  current,
+  onPick,
+  preview,
+}: {
+  title: string;
+  kind: "theme" | "skin" | "frame" | "title";
+  level: number;
+  current: string;
+  onPick: (id: string) => void;
+  preview?: (id: string) => React.ReactNode;
+}) {
+  const items = unlocksFor(kind);
+  const themes = TABLE_THEMES;
+  void themes;
+  return (
+    <section className="glass-panel mt-4 rounded-2xl p-4">
+      <h2 className="font-display text-lg font-bold">{title}</h2>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {items.map((u) => {
+          const locked = level < u.level;
+          return (
+            <button
+              key={u.id}
+              disabled={locked}
+              onClick={() => onPick(u.id)}
+              className={cn(
+                "flex items-center gap-2 rounded-xl border px-3 py-2 text-sm transition-colors",
+                current === u.id ? "border-gold text-gold" : "border-border",
+                locked && "cursor-not-allowed opacity-45",
+              )}
+            >
+              {preview?.(u.id)}
+              <span>{u.label}</span>
+              {locked ? <span className="text-[10px]">🔒 Nv {u.level}</span> : null}
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}

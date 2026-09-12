@@ -1,0 +1,149 @@
+/**
+ * Sistema de niveles y desbloqueos.
+ *
+ * Niveles ilimitados: cada nivel exige más XP que el anterior (curva ^1.45),
+ * pero a mayor nivel también se ganan más puntos por partida, así la subida
+ * nunca se detiene aunque sí se hace progresivamente más lenta.
+ */
+
+export const xpForLevel = (level: number) => Math.round(120 * Math.pow(level, 1.45));
+
+export function levelFromXp(totalXp: number): { level: number; into: number; need: number } {
+  let level = 1;
+  let rest = Math.max(0, Math.floor(totalXp));
+  // cota alta por seguridad, la curva crece rápido
+  while (level < 9999) {
+    const need = xpForLevel(level);
+    if (rest < need) return { level, into: rest, need };
+    rest -= need;
+    level += 1;
+  }
+  return { level, into: 0, need: xpForLevel(level) };
+}
+
+export const totalXpForLevel = (level: number) => {
+  let sum = 0;
+  for (let l = 1; l < level; l++) sum += xpForLevel(l);
+  return sum;
+};
+
+/** Puntos de experiencia ganados al terminar una partida. */
+export function xpForMatch(opts: {
+  level: number;
+  won: boolean;
+  pointsFor: number;
+  pointsAgainst: number;
+  hands: number;
+}): number {
+  const base = opts.won ? 60 : 18;
+  const margin = Math.max(0, opts.pointsFor - opts.pointsAgainst) * 0.35;
+  const grind = Math.min(30, opts.hands * 3);
+  const levelBonus = 1 + opts.level * 0.03; // a más nivel, más puntos por partida
+  return Math.round((base + margin + grind) * levelBonus);
+}
+
+/** Ajuste de ranking estilo Elo. */
+export function eloDelta(mine: number, theirs: number, won: boolean, k = 28) {
+  const expected = 1 / (1 + Math.pow(10, (theirs - mine) / 400));
+  return Math.round(k * ((won ? 1 : 0) - expected));
+}
+
+export type RankTier = { id: string; label: string; min: number; color: string };
+
+export const RANK_TIERS: RankTier[] = [
+  { id: "callejero", label: "Callejero", min: 0, color: "oklch(0.68 0.03 250)" },
+  { id: "cuartelero", label: "Cuartelero", min: 900, color: "oklch(0.7 0.09 145)" },
+  { id: "data", label: "Data", min: 1100, color: "oklch(0.7 0.13 200)" },
+  { id: "tranquero", label: "Tranquero", min: 1300, color: "oklch(0.74 0.16 47)" },
+  { id: "matador", label: "Matador", min: 1550, color: "oklch(0.7 0.18 15)" },
+  { id: "leyenda", label: "Leyenda", min: 1800, color: "oklch(0.85 0.14 88)" },
+];
+
+export const tierOf = (elo: number) =>
+  [...RANK_TIERS].reverse().find((t) => elo >= t.min) ?? RANK_TIERS[0]!;
+
+export type UnlockKind = "theme" | "skin" | "frame" | "title" | "emoji";
+
+export type Unlockable = {
+  id: string;
+  kind: UnlockKind;
+  label: string;
+  level: number;
+  /** vista previa: color, emoji o gradiente */
+  preview?: string;
+};
+
+export const UNLOCKABLES: Unlockable[] = [
+  // temas de mesa
+  { id: "habana", kind: "theme", label: "Habana nocturna", level: 1 },
+  { id: "carbon", kind: "theme", label: "Carbón", level: 2 },
+  { id: "casino", kind: "theme", label: "Verde casino", level: 6 },
+  { id: "caribe", kind: "theme", label: "Caribe", level: 12 },
+  { id: "vino", kind: "theme", label: "Vino tinto", level: 22 },
+  { id: "arena", kind: "theme", label: "Arena de Varadero", level: 33 },
+  { id: "medianoche", kind: "theme", label: "Medianoche", level: 45 },
+
+  // diseños de ficha
+  { id: "hueso", kind: "skin", label: "Hueso clásico", level: 1 },
+  { id: "marfil", kind: "skin", label: "Marfil", level: 5 },
+  { id: "obsidiana", kind: "skin", label: "Obsidiana", level: 10 },
+  { id: "caoba", kind: "skin", label: "Caoba", level: 18 },
+  { id: "jade", kind: "skin", label: "Jade", level: 28 },
+  { id: "oro", kind: "skin", label: "Oro viejo", level: 40 },
+  { id: "neon", kind: "skin", label: "Neón", level: 55 },
+
+  // marcos de avatar
+  { id: "none", kind: "frame", label: "Sin marco", level: 1 },
+  { id: "bronce", kind: "frame", label: "Bronce", level: 3 },
+  { id: "plata", kind: "frame", label: "Plata", level: 8 },
+  { id: "oro", kind: "frame", label: "Oro", level: 15 },
+  { id: "esmeralda", kind: "frame", label: "Esmeralda", level: 25 },
+  { id: "fuego", kind: "frame", label: "Fuego", level: 35 },
+  { id: "diamante", kind: "frame", label: "Diamante", level: 50 },
+
+  // títulos
+  { id: "novato", kind: "title", label: "Novato", level: 1 },
+  { id: "cuartelero", kind: "title", label: "Cuartelero", level: 4 },
+  { id: "data", kind: "title", label: "Data", level: 9 },
+  { id: "tranquero", kind: "title", label: "Tranquero", level: 14 },
+  { id: "sabroso", kind: "title", label: "Sabroso", level: 20 },
+  { id: "matador", kind: "title", label: "Matador", level: 30 },
+  { id: "capicua", kind: "title", label: "Capicúa", level: 42 },
+  { id: "leyenda", kind: "title", label: "Leyenda del barrio", level: 60 },
+
+  // paquetes de emojis para el chat rápido
+  { id: "basico", kind: "emoji", label: "Emojis básicos", level: 1 },
+  { id: "barrio", kind: "emoji", label: "Emojis de barrio", level: 7 },
+  { id: "fiesta", kind: "emoji", label: "Emojis de fiesta", level: 16 },
+  { id: "picante", kind: "emoji", label: "Emojis picantes", level: 26 },
+];
+
+export const unlocksFor = (kind: UnlockKind) => UNLOCKABLES.filter((u) => u.kind === kind);
+export const isUnlocked = (u: Unlockable, level: number) => level >= u.level;
+
+/** Lo que se desbloquea exactamente al llegar a `level`. */
+export const unlockedAt = (level: number) => UNLOCKABLES.filter((u) => u.level === level);
+
+/** Diseños de ficha: tokens CSS aplicados en la mesa. */
+export const TILE_SKINS: Record<string, { bone: string; boneEdge: string; pip: string }> = {
+  hueso: { bone: "oklch(0.96 0.017 85)", boneEdge: "oklch(0.86 0.03 82)", pip: "oklch(0.24 0.03 260)" },
+  marfil: { bone: "oklch(0.97 0.03 95)", boneEdge: "oklch(0.88 0.05 92)", pip: "oklch(0.32 0.06 60)" },
+  obsidiana: { bone: "oklch(0.28 0.02 260)", boneEdge: "oklch(0.18 0.02 260)", pip: "oklch(0.92 0.02 260)" },
+  caoba: { bone: "oklch(0.48 0.09 40)", boneEdge: "oklch(0.34 0.08 35)", pip: "oklch(0.95 0.02 80)" },
+  jade: { bone: "oklch(0.72 0.11 160)", boneEdge: "oklch(0.55 0.1 160)", pip: "oklch(0.2 0.04 160)" },
+  oro: { bone: "oklch(0.85 0.13 88)", boneEdge: "oklch(0.68 0.14 70)", pip: "oklch(0.26 0.05 60)" },
+  neon: { bone: "oklch(0.32 0.05 300)", boneEdge: "oklch(0.2 0.05 300)", pip: "oklch(0.85 0.2 190)" },
+};
+
+export const getSkin = (id?: string | null) => TILE_SKINS[id ?? "hueso"] ?? TILE_SKINS["hueso"]!;
+
+/** Marcos de avatar: anillo CSS. */
+export const FRAME_RING: Record<string, string> = {
+  none: "1px solid color-mix(in oklab, var(--border) 80%, transparent)",
+  bronce: "2px solid oklch(0.62 0.1 55)",
+  plata: "2px solid oklch(0.82 0.02 250)",
+  oro: "2px solid oklch(0.85 0.14 88)",
+  esmeralda: "2px solid oklch(0.72 0.15 155)",
+  fuego: "2px solid oklch(0.68 0.2 35)",
+  diamante: "2px solid oklch(0.88 0.09 200)",
+};
