@@ -12,7 +12,7 @@ export function levelFromXp(totalXp: number): { level: number; into: number; nee
   let level = 1;
   let rest = Math.max(0, Math.floor(totalXp));
   // cota alta por seguridad, la curva crece rápido
-  while (level < 9999) {
+  while (level < 100) {
     const need = xpForLevel(level);
     if (rest < need) return { level, into: rest, need };
     rest -= need;
@@ -75,10 +75,11 @@ export type Unlockable = {
 
 export const UNLOCKABLES: Unlockable[] = [
   // temas de mesa
+  { id: "madera", kind: "theme", label: "Tabla de madera", level: 1 },
   { id: "habana", kind: "theme", label: "Habana nocturna", level: 1 },
   { id: "carbon", kind: "theme", label: "Carbón", level: 2 },
-  { id: "casino", kind: "theme", label: "Verde casino", level: 6 },
-  { id: "caribe", kind: "theme", label: "Caribe", level: 12 },
+  { id: "casino", kind: "theme", label: "Verde casino", level: 15 },
+  { id: "caribe", kind: "theme", label: "Caribe", level: 19 },
   { id: "vino", kind: "theme", label: "Vino tinto", level: 22 },
   { id: "arena", kind: "theme", label: "Arena de Varadero", level: 33 },
   { id: "medianoche", kind: "theme", label: "Medianoche", level: 45 },
@@ -151,12 +152,15 @@ export const UNLOCKABLES: Unlockable[] = [
   // títulos
   { id: "novato", kind: "title", label: "Novato", level: 1 },
   { id: "cuartelero", kind: "title", label: "Cuartelero", level: 4 },
-  { id: "data", kind: "title", label: "Data", level: 9 },
+  { id: "Elchiva", kind: "title", label: "ElChivato", level: 9 },
   { id: "tranquero", kind: "title", label: "Tranquero", level: 14 },
   { id: "sabroso", kind: "title", label: "Sabroso", level: 20 },
   { id: "matador", kind: "title", label: "Matador", level: 30 },
   { id: "capicua", kind: "title", label: "Capicúa", level: 42 },
-  { id: "leyenda", kind: "title", label: "Leyenda del barrio", level: 60 },
+  { id: "La Tranka", kind: "title", label: "La tranka", level: 60 },
+  { id: "Maestro", kind: "title", label: "Maestro", level: 80 },
+  { id: "leyenda", kind: "title", label: "Leyenda del barrio", level: 90 },
+  { id: "El Puro", kind: "title", label: "El puro", level: 100 },
 
   // paquetes de emojis para el chat rápido
   { id: "basico", kind: "emoji", label: "Emojis básicos", level: 1 },
