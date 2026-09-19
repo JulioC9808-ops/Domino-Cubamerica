@@ -178,6 +178,32 @@ export const isUnlocked = (u: Unlockable, level: number) => level >= u.level;
 /** Lo que se desbloquea exactamente al llegar a `level`. */
 export const unlockedAt = (level: number) => UNLOCKABLES.filter((u) => u.level === level);
 
+/** Detecta el país del jugador por el idioma/región del navegador (ej: "es-PE" → "pe"). */
+export function detectCountry(): string | null {
+  if (typeof navigator === "undefined") return null;
+  const langs = [navigator.language, ...(navigator.languages ?? [])].filter(Boolean);
+  for (const l of langs) {
+    const m = /^[a-zA-Z]{2,3}[-_]([a-zA-Z]{2})\b/.exec(l);
+    if (m) return m[1]!.toLowerCase();
+  }
+  return null;
+}
+
+/** Nivel requerido para una bandera, o null si no está en el catálogo. */
+export function flagUnlockLevel(code: string): number | null {
+  return UNLOCKABLES.find((u) => u.kind === "flag" && u.id === code)?.level ?? null;
+}
+
+/**
+ * La bandera de TU país está siempre desbloqueada desde el nivel 1.
+ * Las demás siguen el catálogo.
+ */
+export function isFlagUnlocked(code: string, level: number, myCountry?: string | null): boolean {
+  if (myCountry && code === myCountry) return true;
+  const req = flagUnlockLevel(code);
+  return req !== null ? level >= req : false;
+}
+
 /** Diseños de ficha: tokens CSS aplicados en la mesa. */
 export const TILE_SKINS: Record<
   string,
