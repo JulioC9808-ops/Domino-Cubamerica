@@ -1,0 +1,14 @@
+{
+  "name": "Domino — Dominó cubano online",
+  "short_name": "Domino",
+  "description": "Dominó cubano online: doble 6 y doble 9, en pareja o 1 vs 1.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0b0e14",
+  "theme_color": "#0b0e14",
+  "icons": [
+    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
