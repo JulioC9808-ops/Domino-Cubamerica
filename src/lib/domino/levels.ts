@@ -1,9 +1,8 @@
 /**
  * Sistema de niveles y desbloqueos.
  *
- * Niveles: cada nivel exige más XP que el anterior (curva ^1.45),
- * pero a mayor nivel también se ganan más puntos por partida.
- * Tope: nivel 100.
+ * Tope: nivel 100. Con cuenta gratuita se sube de nivel igual, pero los
+ * desbloqueos requieren premium (isUnlocked/isFlagUnlocked reciben premium).
  */
 
 export const MAX_LEVEL = 100;
@@ -19,7 +18,6 @@ export function levelFromXp(totalXp: number): { level: number; into: number; nee
     rest -= need;
     level += 1;
   }
-  // nivel máximo: la barra se muestra siempre llena
   return { level: MAX_LEVEL, into: xpForLevel(MAX_LEVEL), need: xpForLevel(MAX_LEVEL) };
 }
 
@@ -29,7 +27,6 @@ export const totalXpForLevel = (level: number) => {
   return sum;
 };
 
-/** Puntos de experiencia ganados al terminar una partida. */
 export function xpForMatch(opts: {
   level: number;
   won: boolean;
@@ -40,11 +37,10 @@ export function xpForMatch(opts: {
   const base = opts.won ? 60 : 18;
   const margin = Math.max(0, opts.pointsFor - opts.pointsAgainst) * 0.35;
   const grind = Math.min(30, opts.hands * 3);
-  const levelBonus = 1 + opts.level * 0.03; // a más nivel, más puntos por partida
+  const levelBonus = 1 + opts.level * 0.03;
   return Math.round((base + margin + grind) * levelBonus);
 }
 
-/** Ajuste de ranking estilo Elo. */
 export function eloDelta(mine: number, theirs: number, won: boolean, k = 28) {
   const expected = 1 / (1 + Math.pow(10, (theirs - mine) / 400));
   return Math.round(k * ((won ? 1 : 0) - expected));
@@ -76,12 +72,10 @@ export type Unlockable = {
   kind: UnlockKind;
   label: string;
   level: number;
-  /** vista previa: color, emoji o gradiente */
   preview?: string;
 };
 
 export const UNLOCKABLES: Unlockable[] = [
-  // temas de mesa
   { id: "madera", kind: "theme", label: "Tabla de madera", level: 1 },
   { id: "habana", kind: "theme", label: "Habana nocturna", level: 1 },
   { id: "carbon", kind: "theme", label: "Carbón", level: 2 },
@@ -98,7 +92,6 @@ export const UNLOCKABLES: Unlockable[] = [
   { id: "medianoche", kind: "theme", label: "Medianoche", level: 45 },
   { id: "cromo", kind: "theme", label: "Cromo espejo", level: 50 },
 
-  // banderas de fondo (recompensa)
   { id: "cu", kind: "flag", label: "Cuba", level: 1 },
   { id: "do", kind: "flag", label: "República Dominicana", level: 2 },
   { id: "pr", kind: "flag", label: "Puerto Rico", level: 2 },
@@ -130,7 +123,6 @@ export const UNLOCKABLES: Unlockable[] = [
   { id: "ru", kind: "flag", label: "Rusia", level: 26 },
   { id: "ca", kind: "flag", label: "Canadá", level: 26 },
 
-  // diseños de ficha
   { id: "hueso", kind: "skin", label: "Hueso clásico", level: 1 },
   { id: "marfil", kind: "skin", label: "Marfil", level: 5 },
   { id: "obsidiana", kind: "skin", label: "Obsidiana", level: 10 },
@@ -144,7 +136,6 @@ export const UNLOCKABLES: Unlockable[] = [
   { id: "neon", kind: "skin", label: "Neón", level: 63 },
   { id: "estelar", kind: "skin", label: "Estelar", level: 70 },
 
-  // marcos de avatar
   { id: "none", kind: "frame", label: "Sin marco", level: 1 },
   { id: "bronce", kind: "frame", label: "Bronce", level: 3 },
   { id: "plata", kind: "frame", label: "Plata", level: 8 },
@@ -153,7 +144,6 @@ export const UNLOCKABLES: Unlockable[] = [
   { id: "fuego", kind: "frame", label: "Fuego", level: 35 },
   { id: "diamante", kind: "frame", label: "Diamante", level: 50 },
 
-  // títulos
   { id: "novato", kind: "title", label: "Novato", level: 1 },
   { id: "cuartelero", kind: "title", label: "Cuartelero", level: 4 },
   { id: "el-chivato", kind: "title", label: "ElChivato", level: 9 },
@@ -166,7 +156,6 @@ export const UNLOCKABLES: Unlockable[] = [
   { id: "leyenda", kind: "title", label: "Leyenda del barrio", level: 90 },
   { id: "el-puro", kind: "title", label: "El Puro", level: 100 },
 
-  // paquetes de emojis para el chat rápido
   { id: "basico", kind: "emoji", label: "Emojis básicos", level: 1 },
   { id: "barrio", kind: "emoji", label: "Emojis de barrio", level: 7 },
   { id: "fiesta", kind: "emoji", label: "Emojis de fiesta", level: 16 },
@@ -174,12 +163,15 @@ export const UNLOCKABLES: Unlockable[] = [
 ];
 
 export const unlocksFor = (kind: UnlockKind) => UNLOCKABLES.filter((u) => u.kind === kind);
-export const isUnlocked = (u: Unlockable, level: number) => level >= u.level;
 
-/** Lo que se desbloquea exactamente al llegar a `level`. */
-export const unlockedAt = (level: number) => UNLOCKABLES.filter((u) => u.level === level);
+/**
+ * Desbloqueo general:
+ * - premium: nivel requerido.
+ * - gratis: solo los ítems de nivel 1 (lo demás queda 🔒; lo ya equipado se conserva).
+ */
+export const isUnlocked = (u: Unlockable, level: number, premium = true): boolean =>
+  premium ? level >= u.level : u.level <= 1;
 
-/** Detecta el país del jugador por el idioma/región del navegador (ej: "es-PE" → "pe"). */
 export function detectCountry(): string | null {
   if (typeof navigator === "undefined") return null;
   const langs = [navigator.language, ...(navigator.languages ?? [])].filter(Boolean);
@@ -190,27 +182,32 @@ export function detectCountry(): string | null {
   return null;
 }
 
-/** Nivel requerido para una bandera, o null si no está en el catálogo. */
 export function flagUnlockLevel(code: string): number | null {
   return UNLOCKABLES.find((u) => u.kind === "flag" && u.id === code)?.level ?? null;
 }
 
 /**
- * La bandera de TU país está siempre desbloqueada desde el nivel 1.
- * Las demás siguen el catálogo.
+ * La bandera de TU país es gratis siempre (identidad).
+ * Las demás: premium + nivel.
  */
-export function isFlagUnlocked(code: string, level: number, myCountry?: string | null): boolean {
+export function isFlagUnlocked(
+  code: string,
+  level: number,
+  myCountry?: string | null,
+  premium = true,
+): boolean {
   if (myCountry && code === myCountry) return true;
+  if (!premium) return false;
   const req = flagUnlockLevel(code);
   return req !== null ? level >= req : false;
 }
 
-/** Diseños de ficha: tokens CSS aplicados en la mesa. */
 export const TILE_SKINS: Record<
   string,
   { bone: string; boneEdge: string; pip: string; texture?: string }
 > = {
   hueso: { bone: "oklch(0.96 0.017 85)", boneEdge: "oklch(0.86 0.03 82)", pip: "oklch(0.24 0.03 260)" },
+  colores: { bone: "oklch(0.97 0.012 250)", boneEdge: "oklch(0.88 0.02 250)", pip: "oklch(0.24 0.03 260)" },
   marfil: {
     bone: "oklch(0.97 0.03 95)", boneEdge: "oklch(0.88 0.05 92)", pip: "oklch(0.32 0.06 60)",
     texture: `repeating-linear-gradient(3deg, oklch(0.5 0.03 85 / 0.06) 0 1px, transparent 1px 6px)`,
@@ -219,7 +216,6 @@ export const TILE_SKINS: Record<
     bone: "oklch(0.28 0.02 260)", boneEdge: "oklch(0.18 0.02 260)", pip: "oklch(0.92 0.02 260)",
     texture: `radial-gradient(circle at 30% 30%, oklch(1 0 0 / 0.06) 1px, transparent 1.6px) 0 0 / 7px 7px`,
   },
-  colores: { bone: "oklch(0.97 0.012 250)", boneEdge: "oklch(0.88 0.02 250)", pip: "oklch(0.24 0.03 260)" },
   caoba: {
     bone: "oklch(0.48 0.09 40)", boneEdge: "oklch(0.34 0.08 35)", pip: "oklch(0.95 0.02 80)",
     texture: `repeating-linear-gradient(88deg, oklch(0.1 0.05 30 / 0.2) 0 1px, transparent 1px 5px, oklch(1 0 0 / 0.06) 5px 6px, transparent 6px 11px)`,
@@ -253,7 +249,6 @@ export const TILE_SKINS: Record<
 
 export const getSkin = (id?: string | null) => TILE_SKINS[id ?? "hueso"] ?? TILE_SKINS["hueso"]!;
 
-/** Marcos de avatar: anillo CSS. */
 export const FRAME_RING: Record<string, string> = {
   none: "1px solid color-mix(in oklab, var(--border) 80%, transparent)",
   bronce: "2px solid oklch(0.62 0.1 55)",
