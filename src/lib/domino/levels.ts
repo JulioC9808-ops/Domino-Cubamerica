@@ -62,7 +62,7 @@ export const RANK_TIERS: RankTier[] = [
 export const tierOf = (elo: number) =>
   [...RANK_TIERS].reverse().find((t) => elo >= t.min) ?? RANK_TIERS[0]!;
 
-export type UnlockKind = "theme" | "skin" | "frame" | "title" | "emoji";
+export type UnlockKind = "theme" | "skin" | "frame" | "flag" | "title" | "emoji";
 
 export type Unlockable = {
   id: string;
@@ -82,6 +82,38 @@ export const UNLOCKABLES: Unlockable[] = [
   { id: "vino", kind: "theme", label: "Vino tinto", level: 22 },
   { id: "arena", kind: "theme", label: "Arena de Varadero", level: 33 },
   { id: "medianoche", kind: "theme", label: "Medianoche", level: 45 },
+
+  // banderas de fondo (recompensa)
+{ id: "cu", kind: "flag", label: "Cuba", level: 1 },
+{ id: "do", kind: "flag", label: "República Dominicana", level: 2 },
+{ id: "pr", kind: "flag", label: "Puerto Rico", level: 2 },
+{ id: "ve", kind: "flag", label: "Venezuela", level: 3 },
+{ id: "mx", kind: "flag", label: "México", level: 3 },
+{ id: "co", kind: "flag", label: "Colombia", level: 4 },
+{ id: "es", kind: "flag", label: "España", level: 4 },
+{ id: "us", kind: "flag", label: "Estados Unidos", level: 5 },
+{ id: "ar", kind: "flag", label: "Argentina", level: 6 },
+{ id: "cl", kind: "flag", label: "Chile", level: 6 },
+{ id: "pe", kind: "flag", label: "Perú", level: 8 },
+{ id: "ec", kind: "flag", label: "Ecuador", level: 8 },
+{ id: "uy", kind: "flag", label: "Uruguay", level: 10 },
+{ id: "py", kind: "flag", label: "Paraguay", level: 10 },
+{ id: "bo", kind: "flag", label: "Bolivia", level: 10 },
+{ id: "cr", kind: "flag", label: "Costa Rica", level: 12 },
+{ id: "gt", kind: "flag", label: "Guatemala", level: 12 },
+{ id: "hn", kind: "flag", label: "Honduras", level: 12 },
+{ id: "ni", kind: "flag", label: "Nicaragua", level: 12 },
+{ id: "sv", kind: "flag", label: "El Salvador", level: 12 },
+{ id: "pa", kind: "flag", label: "Panamá", level: 12 },
+{ id: "ht", kind: "flag", label: "Haití", level: 15 },
+{ id: "jm", kind: "flag", label: "Jamaica", level: 15 },
+{ id: "br", kind: "flag", label: "Brasil", level: 18 },
+{ id: "it", kind: "flag", label: "Italia", level: 18 },
+{ id: "pt", kind: "flag", label: "Portugal", level: 18 },
+{ id: "fr", kind: "flag", label: "Francia", level: 22 },
+{ id: "de", kind: "flag", label: "Alemania", level: 22 },
+{ id: "ru", kind: "flag", label: "Rusia", level: 26 },
+{ id: "ca", kind: "flag", label: "Canadá", level: 26 },
 
   // temas (texturas de mesa)
 { id: "marmol", kind: "theme", label: "Mármol blanco", level: 4 },
