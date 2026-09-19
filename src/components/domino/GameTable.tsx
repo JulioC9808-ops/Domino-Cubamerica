@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { DominoTile } from "./DominoTile";
 import { BoardSnake } from "./BoardSnake";
@@ -60,7 +60,9 @@ export function GameTable({
   const theme = getTheme(themeId);
   const skin = getSkin(tileSkin);
   const [selected, setSelected] = useState<string | null>(null);
-  const [dragging, setDragging] = useState<string | null>(null);
+  const [drag, setDrag] = useState<{ key: string; x: number; y: number } | null>(null);
+  const pressRef = useRef<{ key: string; x: number; y: number } | null>(null);
+  const movedRef = useRef(false);
   const players = state.players;
   const myTurn = state.turn === mySeat && state.phase === "playing";
   const hand = state.hands[mySeat] ?? [];
@@ -69,10 +71,10 @@ export function GameTable({
     if (!myTurn) setSelected(null);
   }, [myTurn]);
 
-  const active = selected ?? dragging;
+  const activeKey = selected ?? drag?.key ?? null;
   const activeTile = useMemo(
-    () => hand.find((t) => tileKey(t) === active) ?? null,
-    [hand, active],
+    () => (activeKey ? (hand.find((t) => tileKey(t) === activeKey) ?? null) : null),
+    [hand, activeKey],
   );
   const placement = activeTile ? canPlaceTile(state, activeTile) : { left: false, right: false };
   const empty = state.board.length === 0;
@@ -86,7 +88,7 @@ export function GameTable({
     sfx.place();
     onPlay(tile, side);
     setSelected(null);
-    setDragging(null);
+    setDrag(null);
   }
 
   function tapTile(tile: Tile) {
@@ -94,18 +96,76 @@ export function GameTable({
     const c = canPlaceTile(state, tile);
     if (empty) return attempt(tile, "right");
     if (c.left && c.right) {
+      // ambos lados: se selecciona; se coloca arrastrándola o tocando la punta
       setSelected((s) => (s === tileKey(tile) ? null : tileKey(tile)));
       return;
     }
+    // un solo lado: tocarla la coloca directo
     if (c.left) return attempt(tile, "left");
     if (c.right) return attempt(tile, "right");
   }
+
+  // ---- arrastre fluido (pointer events, funciona con mouse y touch) ----
+  function handleTilePointerDown(e: React.PointerEvent, tile: Tile) {
+    if (!myTurn) return;
+    const c = canPlaceTile(state, tile);
+    if (!(empty || c.left || c.right)) return;
+    pressRef.current = { key: tileKey(tile), x: e.clientX, y: e.clientY };
+    movedRef.current = false;
+  }
+
+  useEffect(() => {
+    function onMove(e: PointerEvent) {
+      const p = pressRef.current;
+      if (!p) return;
+      if (!movedRef.current && Math.hypot(e.clientX - p.x, e.clientY - p.y) > 6) {
+        movedRef.current = true;
+      }
+      if (movedRef.current) setDrag({ key: p.key, x: e.clientX, y: e.clientY });
+    }
+    function onCancel() {
+      pressRef.current = null;
+      movedRef.current = false;
+      setDrag(null);
+    }
+    function onUp(e: PointerEvent) {
+      const p = pressRef.current;
+      pressRef.current = null;
+      if (!p) return;
+      if (movedRef.current) {
+        setDrag(null);
+        const el = document.elementFromPoint(e.clientX, e.clientY);
+        const zone = el?.closest?.("[data-drop-side]") as HTMLElement | null | undefined;
+        const side = zone?.dataset?.dropSide as Side | undefined;
+        if (!side) return;
+        const tile = state.hands[mySeat]?.find((t) => tileKey(t) === p.key);
+        if (!tile) return;
+        const c = canPlaceTile(state, tile);
+        const ok =
+          state.board.length === 0 ? side === "right" : side === "left" ? c.left : c.right;
+        if (ok) attempt(tile, side);
+        return;
+      }
+      // tap (sin arrastre)
+      const tile = state.hands[mySeat]?.find((t) => tileKey(t) === p.key);
+      if (tile) tapTile(tile);
+    }
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onCancel);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onCancel);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, mySeat, empty]);
 
   const topSeat = players === 2 ? (mySeat + 1) % 2 : (mySeat + 2) % 4;
 
   return (
     <div
-      className="relative w-full"
+      className={cn("relative w-full", tileSkin === "colores" && "skin-pipcolor")}
       style={
         {
           "--felt": theme.felt,
@@ -120,8 +180,7 @@ export function GameTable({
       }
     >
       <div className="felt-surface rail-edge relative overflow-hidden rounded-[2rem]">
-        {/* Bandera PURA (sin filtros ni velo) + textura del tema pintada encima, sutil.
-            Sin bandera: la textura sola a baja opacidad sobre el fieltro. */}
+        {/* Bandera PURA visible solo para quien la activó + textura del tema encima */}
         {tableFlag ? (
           <div className="pointer-events-none absolute inset-0 z-0">
             <Flag code={tableFlag} fill />
@@ -173,10 +232,10 @@ export function GameTable({
                 startKey={startKey}
                 emptyMessage={
                   myTurn
-                    ? "Sales tú — arrastra o toca una ficha"
+                    ? "Arrastra o toca una ficha para salir"
                     : `Sale ${seats[state.turn]?.name ?? "…"}`
                 }
-                showZones={!!activeTile && !empty}
+                showZones={!!activeTile}
                 leftEnabled={placement.left}
                 rightEnabled={placement.right}
                 onDropSide={(side) => activeTile && attempt(activeTile, side)}
@@ -217,8 +276,9 @@ export function GameTable({
                 return (
                   <div
                     key={tileKey(tile)}
-                    className="animate-deal"
+                    className={cn("animate-deal", playable && "touch-none")}
                     style={{ animationDelay: `${i * 40}ms` }}
+                    onPointerDown={(e) => handleTilePointerDown(e, tile)}
                   >
                     <DominoTile
                       tile={tile}
@@ -227,14 +287,6 @@ export function GameTable({
                       playable={playable}
                       dimmed={myTurn && !playable}
                       selected={selected === tileKey(tile)}
-                      onClick={() => tapTile(tile)}
-                      draggable={playable}
-                      onDragStart={(e) => {
-                        setDragging(tileKey(tile));
-                        e.dataTransfer.effectAllowed = "move";
-                        e.dataTransfer.setData("text/plain", tileKey(tile));
-                      }}
-                      onDragEnd={() => setDragging(null)}
                     />
                   </div>
                 );
@@ -261,6 +313,23 @@ export function GameTable({
           </div>
         </div>
       </div>
+
+      {/* fantasma de la ficha mientras se arrastra */}
+      {drag
+        ? (() => {
+            const t = hand.find((x) => tileKey(x) === drag.key);
+            return t ? (
+              <div
+                className="pointer-events-none fixed z-50 -translate-x-1/2 -translate-y-[70%]"
+                style={{ left: drag.x, top: drag.y }}
+              >
+                <div className="rotate-[-5deg] scale-110 drop-shadow-[0_18px_24px_oklch(0_0_0/0.5)]">
+                  <DominoTile tile={t} orientation="v" size="md" />
+                </div>
+              </div>
+            ) : null;
+          })()
+        : null}
     </div>
   );
 }
