@@ -67,13 +67,18 @@ const PIP_LAYOUT: Record<number, [number, number][]> = {
   ],
 };
 
+/**
+ * Cada pip lleva data-v={valor}: el skin "colores" los pinta por valor
+ * vía CSS (ver .skin-pipcolor en styles.css). Fuera de ese skin, bg-pip normal.
+ */
 function Face({ value, className }: { value: number; className?: string }) {
   return (
     <div className={cn("relative grid h-full w-full grid-cols-3 grid-rows-3 p-[14%]", className)}>
       {PIP_LAYOUT[value]?.map(([r, c], i) => (
         <span
           key={i}
-          className="rounded-full bg-pip shadow-[inset_0_-1px_1px_oklch(1_0_0/0.35)]"
+          data-v={value}
+          className="pip rounded-full bg-pip shadow-[inset_0_-1px_1px_oklch(1_0_0/0.35)]"
           style={{
             gridRow: r + 1,
             gridColumn: c + 1,
@@ -163,7 +168,6 @@ export function DominoTile({
       style={{
         width,
         height,
-        // textura del skin pintada sobre el gradiente (solo fichas visibles)
         backgroundImage: faceDown ? undefined : "var(--bone-texture, none)",
         backgroundBlendMode: faceDown ? undefined : "overlay",
         ...style,
