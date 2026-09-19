@@ -1,10 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppNav } from "@/components/AppNav";
+import { Flag } from "@/components/Flag";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
-import { FLAGS, TABLE_THEMES, getTheme } from "@/lib/domino/themes";
-import { unlocksFor, getSkin } from "@/lib/domino/levels";
+import { getTheme } from "@/lib/domino/themes";
+import { unlocksFor, getSkin, FRAME_RING } from "@/lib/domino/levels";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/ajustes")({
@@ -15,7 +16,7 @@ export const Route = createFileRoute("/ajustes")({
       {
         name: "description",
         content:
-          "Cambia tu nombre, bandera de la mesa, tema, diseño de fichas y marco según tu nivel en Domino.",
+          "Cambia tu nombre, bandera, tema de mesa, diseño de fichas y marco según tu nivel en Domino.",
       },
       { property: "og:title", content: "Ajustes de Domino" },
       { property: "og:description", content: "Personaliza tu mesa, bandera y fichas." },
@@ -59,31 +60,17 @@ function Ajustes() {
           onBlur={(e) => void update({ username: e.target.value.trim().slice(0, 24) })}
           className="rounded-xl border border-input bg-card px-3 py-2 text-sm"
         />
-        <label className="text-xs uppercase tracking-widest text-muted-foreground">
-          Bandera de la mesa
-        </label>
-        <select
-          value={profile?.flag ?? "cu"}
-          onChange={(e) => void update({ flag: e.target.value })}
-          className="rounded-xl border border-input bg-card px-3 py-2 text-sm"
-        >
-          {FLAGS.map((f) => (
-            <option key={f.code} value={f.code}>
-              {f.emoji} {f.label}
-            </option>
-          ))}
-        </select>
       </section>
 
       <Unlock
         title="Tema de mesa"
         kind="theme"
         level={level}
-        current={profile?.table_theme ?? "habana"}
+        current={profile?.table_theme ?? "madera"}
         onPick={(id) => void update({ table_theme: id })}
         preview={(id) => (
           <span
-            className="block h-6 w-6 rounded-full"
+            className="block h-6 w-6 rounded-full border border-white/20"
             style={{ background: getTheme(id).felt }}
           />
         )}
@@ -97,10 +84,19 @@ function Ajustes() {
         onPick={(id) => void update({ tile_skin: id })}
         preview={(id) => (
           <span
-            className="block h-6 w-6 rounded-md"
+            className="block h-6 w-6 rounded-md border border-white/20"
             style={{ background: getSkin(id).bone }}
           />
         )}
+      />
+
+      <Unlock
+        title="Bandera de la mesa"
+        kind="flag"
+        level={level}
+        current={profile?.flag ?? "cu"}
+        onPick={(id) => void update({ flag: id })}
+        preview={(id) => <Flag code={id} size={20} />}
       />
 
       <Unlock
@@ -109,6 +105,9 @@ function Ajustes() {
         level={level}
         current={profile?.frame ?? "none"}
         onPick={(id) => void update({ frame: id })}
+        preview={(id) => (
+          <span className="block h-5 w-5 rounded-full" style={{ border: FRAME_RING[id] }} />
+        )}
       />
 
       <Unlock
@@ -138,15 +137,13 @@ function Unlock({
   preview,
 }: {
   title: string;
-  kind: "theme" | "skin" | "frame" | "title";
+  kind: "theme" | "skin" | "frame" | "flag" | "title";
   level: number;
   current: string;
   onPick: (id: string) => void;
   preview?: (id: string) => React.ReactNode;
 }) {
   const items = unlocksFor(kind);
-  const themes = TABLE_THEMES;
-  void themes;
   return (
     <section className="glass-panel mt-4 rounded-2xl p-4">
       <h2 className="font-display text-lg font-bold">{title}</h2>
