@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { levelFromXp } from "@/lib/domino/levels";
+import { levelFromXp, detectCountry } from "@/lib/domino/levels";
+import { FLAGS } from "@/lib/domino/themes";
 
 export type Profile = {
   id: string;
@@ -43,6 +44,20 @@ export function useProfile(userId?: string | null) {
     void load();
   }, [load]);
 
+  // Primera vez: auto-seleccionar la bandera del país detectado (solo si sigue el default)
+  useEffect(() => {
+    if (!userId || !profile) return;
+    if (profile.flag !== "cu") return; // ya eligió bandera
+    const country = detectCountry();
+    if (!country || country === "cu") return;
+    if (!FLAGS.some((f) => f.code === country)) return;
+    const key = `flag-auto-${userId}`;
+    if (localStorage.getItem(key)) return; // solo una vez por usuario/dispositivo
+    localStorage.setItem(key, "1");
+    void supabase.from("profiles").update({ flag: country }).eq("id", userId);
+    setProfile((p) => (p ? { ...p, flag: country } : p));
+  }, [userId, profile]);
+
   const update = useCallback(
     async (patch: Partial<Profile>) => {
       if (!userId) return { error: new Error("No autenticado") };
@@ -54,6 +69,5 @@ export function useProfile(userId?: string | null) {
   );
 
   const progress = levelFromXp(profile?.xp ?? 0);
-
   return { profile, loading, reload: load, update, progress };
 }
