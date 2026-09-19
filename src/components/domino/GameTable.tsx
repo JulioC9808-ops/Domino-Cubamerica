@@ -61,7 +61,6 @@ export function GameTable({
   const skin = getSkin(tileSkin);
   const [selected, setSelected] = useState<string | null>(null);
   const [dragging, setDragging] = useState<string | null>(null);
-
   const players = state.players;
   const myTurn = state.turn === mySeat && state.phase === "playing";
   const hand = state.hands[mySeat] ?? [];
@@ -78,7 +77,6 @@ export function GameTable({
   const placement = activeTile ? canPlaceTile(state, activeTile) : { left: false, right: false };
   const empty = state.board.length === 0;
   const mustPass = myTurn && !hasLegalMove(state, mySeat);
-
   const startKey = useMemo(() => {
     const first = state.events.find((e) => e.type === "play");
     return first && first.type === "play" ? tileKey(first.tile) : undefined;
@@ -117,22 +115,27 @@ export function GameTable({
           "--bone": skin.bone,
           "--bone-edge": skin.boneEdge,
           "--pip": skin.pip,
+          "--bone-texture": skin.texture ?? "none",
         } as React.CSSProperties
       }
     >
-      <div
-        className={cn(
-          "felt-surface rail-edge relative overflow-hidden rounded-[2rem]",
-          theme.wood && "wood-grain",
-        )}
-      >
-        {/* Marca de agua local: solo la ve quien la activó en sus ajustes */}
+      <div className="felt-surface rail-edge relative overflow-hidden rounded-[2rem]">
+        {/* Bandera PURA (sin filtros ni velo) + textura del tema pintada encima, sutil.
+            Sin bandera: la textura sola a baja opacidad sobre el fieltro. */}
         {tableFlag ? (
           <div className="pointer-events-none absolute inset-0 z-0">
-            <Flag code={tableFlag} fill className="opacity-[0.14] blur-[1px] saturate-150" />
-            <div className="absolute inset-0 bg-[color-mix(in_oklab,var(--felt)_55%,transparent)]" />
+            <Flag code={tableFlag} fill />
+            <div
+              className="absolute inset-0 opacity-[0.10]"
+              style={{ background: theme.texture }}
+            />
           </div>
-        ) : null}
+        ) : (
+          <div
+            className="pointer-events-none absolute inset-0 z-0 opacity-[0.18]"
+            style={{ background: theme.texture }}
+          />
+        )}
 
         <div className="relative z-10 grid min-h-[62vh] grid-rows-[auto_1fr_auto] gap-2 p-3 sm:min-h-[68vh] sm:p-5">
           <div className="flex justify-center">
@@ -178,7 +181,6 @@ export function GameTable({
                 rightEnabled={placement.right}
                 onDropSide={(side) => activeTile && attempt(activeTile, side)}
               />
-
               {!empty ? (
                 <div className="pointer-events-none absolute inset-x-0 top-0 flex justify-between px-3 text-[10px] font-semibold uppercase tracking-widest text-white/45">
                   <span>punta {state.leftEnd}</span>
@@ -238,7 +240,6 @@ export function GameTable({
                 );
               })}
             </div>
-
             <div className="flex w-full items-end justify-between gap-2">
               {onSay ? (
                 <QuickChat level={myLevel} bubbles={bubbles} onSend={onSay} />
@@ -283,7 +284,6 @@ function OpponentRow({
   const active = state.turn === seat && state.phase === "playing";
   const vertical = layout !== "top";
   const partner = state.players === 4 && (seat - mySeat + 4) % 4 === 2;
-
   return (
     <div className={cn("flex items-center gap-2", vertical ? "w-14 flex-col sm:w-20" : "flex-col")}>
       <SeatBadge
