@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { getTheme } from "@/lib/domino/themes";
-import { unlocksFor, getSkin, FRAME_RING } from "@/lib/domino/levels";
+import { unlocksFor, getSkin, FRAME_RING, isFlagUnlocked, detectCountry } from "@/lib/domino/levels";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/ajustes")({
@@ -44,6 +44,7 @@ function Ajustes() {
   }
 
   const level = progress.level;
+  const myCountry = detectCountry();
 
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-6">
@@ -96,6 +97,7 @@ function Ajustes() {
         level={level}
         current={profile?.flag ?? "cu"}
         onPick={(id) => void update({ flag: id })}
+        customUnlocked={(id) => isFlagUnlocked(id, level, myCountry)}
         preview={(id) => <Flag code={id} size={20} />}
       />
 
@@ -135,6 +137,7 @@ function Unlock({
   current,
   onPick,
   preview,
+  customUnlocked,
 }: {
   title: string;
   kind: "theme" | "skin" | "frame" | "flag" | "title";
@@ -142,6 +145,8 @@ function Unlock({
   current: string;
   onPick: (id: string) => void;
   preview?: (id: string) => React.ReactNode;
+  /** si se define, decide el desbloqueo en lugar del nivel (ej: bandera de tu país gratis) */
+  customUnlocked?: (id: string) => boolean;
 }) {
   const items = unlocksFor(kind);
   return (
@@ -149,7 +154,7 @@ function Unlock({
       <h2 className="font-display text-lg font-bold">{title}</h2>
       <div className="mt-3 flex flex-wrap gap-2">
         {items.map((u) => {
-          const locked = level < u.level;
+          const locked = customUnlocked ? !customUnlocked(u.id) : level < u.level;
           return (
             <button
               key={u.id}
