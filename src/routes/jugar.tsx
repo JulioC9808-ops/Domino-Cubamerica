@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppNav } from "@/components/AppNav";
 import { GameTable, type SeatInfo } from "@/components/domino/GameTable";
 import { chooseBotMove } from "@/lib/domino/bot";
 import { useAuth } from "@/hooks/useAuth";
+import { usePlayCredits } from "@/hooks/usePlayCredits";
 import { useProfile } from "@/hooks/useProfile";
 import type { ChatBubble } from "@/lib/domino/chat";
 import {
@@ -47,10 +48,24 @@ export const Route = createFileRoute("/jugar")({
 const BOT_NAMES = ["Yuniel", "Marisol", "El Chino"];
 const BOT_FLAGS = ["es", "mx", "do"];
 
+type Gate = "checking" | "guest" | "ok" | "blocked";
+
+function fmtTime(sec: number): string {
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = sec % 60;
+  const mm = String(m).padStart(2, "0");
+  const ss = String(s).padStart(2, "0");
+  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+}
+
 function Jugar() {
   const { v } = Route.useSearch();
   const { user } = useAuth();
   const { profile, progress } = useProfile(user?.id);
+  const credits = usePlayCredits();
+  const [gate, setGate] = useState<Gate>("checking");
+  const [shown, setShown] = useState<number | null>(null);
 
   const preset = VARIANTS.find((x) => x.id === v) ?? VARIANTS[0]!;
   const [state, setState] = useState<GameState>(() =>
@@ -69,7 +84,45 @@ function Jugar() {
     sfx.deal();
   }, [preset.id]);
 
-  const themeId = profile?.table_theme ?? "habana";
+  /* ── GATE: verificar sesión/tiempo al entrar (el servidor decide) ── */
+  useEffect(() => {
+    let alive = true;
+    if (!user) {
+      setGate("guest");
+      return;
+    }
+    setGate("checking");
+    void (async () => {
+      const ok = await credits.startSession();
+      if (alive) setGate(ok ? "ok" : "blocked");
+    })();
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  /* ── Reloj: latido cada 30 s al servidor (solo cuentas gratuitas) ── */
+  useEffect(() => {
+    if (gate !== "ok" || credits.premium) return;
+    const id = setInterval(() => {
+      void credits.tick();
+    }, 30_000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gate, credits.premium]);
+
+  /* ── Cuenta atrás suave para mostrar ⏱ (se resincroniza con el tick) ── */
+  useEffect(() => {
+    setShown(credits.freeSeconds);
+  }, [credits.freeSeconds]);
+  useEffect(() => {
+    if (credits.premium || gate !== "ok") return;
+    const id = setInterval(() => setShown((s) => (s !== null && s > 0 ? s - 1 : 0)), 1000);
+    return () => clearInterval(id);
+  }, [credits.premium, gate]);
+
+  const themeId = profile?.table_theme ?? "madera";
   const tileSkin = profile?.tile_skin ?? "hueso";
   const tableFlag = profile?.flag ?? "cu";
 
@@ -150,8 +203,24 @@ function Jugar() {
     setTimeout(() => setBubbles((b) => b.filter((x) => x.id !== bubble.id)), 5000);
   }
 
-  const last = state.events[state.events.length - 1];
+  /* ── Continuar a la siguiente mano: re-chequea el tiempo en servidor ── */
+  async function handleContinue() {
+    sfx.click();
+    if (!credits.premium) {
+      const ok = await credits.startSession();
+      if (!ok) {
+        setGate("blocked");
+        return;
+      }
+    }
+    setState((cur) =>
+      cur.phase === "game_over"
+        ? createGame({ targetScore: cur.targetScore, variant: cur.variant })
+        : nextHand(cur),
+    );
+  }
 
+  const last = state.events[state.events.length - 1];
   useEffect(() => {
     if (state.phase === "playing") return;
     if (state.phase === "game_over") {
@@ -167,7 +236,6 @@ function Jugar() {
   return (
     <main className="mx-auto w-full max-w-6xl px-3 py-5 sm:px-6">
       <AppNav />
-
       <header className="mb-4 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:flex sm:justify-between">
         <div className="min-w-0">
           <h1 className="truncate font-display text-2xl font-extrabold sm:text-3xl">
@@ -181,6 +249,25 @@ function Jugar() {
           <Score label="Nosotros" value={state.scores[0]} tone="a" />
           <div className="h-8 w-px bg-border" />
           <Score label="Ellos" value={state.scores[1]} tone="b" />
+          {/* Reloj de cuenta gratuita */}
+          {!credits.premium && user && shown !== null ? (
+            <>
+              <div className="h-8 w-px bg-border" />
+              <div className="text-center">
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                  Tu tiempo
+                </p>
+                <p
+                  className={cn(
+                    "font-display text-sm font-bold tabular-nums",
+                    shown <= 300 ? "text-destructive" : "text-foreground",
+                  )}
+                >
+                  ⏱ {fmtTime(shown)}
+                </p>
+              </div>
+            </>
+          ) : null}
         </div>
       </header>
 
@@ -218,14 +305,7 @@ function Jugar() {
               {state.scores[0]} — {state.scores[1]}
             </p>
             <button
-              onClick={() => {
-                sfx.click();
-                setState((cur) =>
-                  cur.phase === "game_over"
-                    ? createGame({ targetScore: cur.targetScore, variant: cur.variant })
-                    : nextHand(cur),
-                );
-              }}
+              onClick={() => void handleContinue()}
               className="mt-5 w-full rounded-full bg-primary py-2.5 font-semibold text-primary-foreground transition-transform hover:scale-[1.02]"
             >
               {state.phase === "game_over" ? "Partida nueva" : "Siguiente mano"}
@@ -237,6 +317,65 @@ function Jugar() {
       {toast ? (
         <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full bg-destructive px-5 py-2 text-sm font-medium text-destructive-foreground shadow-lg">
           {toast}
+        </div>
+      ) : null}
+
+      {/* ── PUERTA DE ACCESO (cubre la mesa hasta verificarse) ── */}
+      {gate !== "ok" ? (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+          <div className="glass-panel w-full max-w-sm animate-scale-in rounded-3xl p-6 text-center">
+            {gate === "checking" ? (
+              <>
+                <p className="animate-pulse font-display text-lg font-bold">Verificando tu cuenta…</p>
+                <p className="mt-2 text-xs text-muted-foreground">Comprobando tu tiempo de juego.</p>
+              </>
+            ) : null}
+
+            {gate === "guest" ? (
+              <>
+                <p className="font-display text-xl font-bold">Inicia sesión para jugar</p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  La cuenta gratuita incluye 30 minutos cada 48 horas, y guarda tu nivel,
+                  ranking y recompensas.
+                </p>
+                <Link
+                  to="/auth"
+                  className="mt-5 block w-full rounded-full bg-primary py-2.5 font-semibold text-primary-foreground"
+                >
+                  Iniciar sesión o registrarse
+                </Link>
+              </>
+            ) : null}
+
+            {gate === "blocked" ? (
+              <>
+                <p className="font-display text-xl font-bold">Te quedaste sin tiempo ⏱</p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Agotaste tus 30 minutos gratis. Con un plan juegas sin límite,
+                  desbloqueas recompensas y entras a torneos. El próximo tiempo gratis
+                  llega en 48 horas.
+                </p>
+                <Link
+                  to="/planes"
+                  className="mt-5 block w-full rounded-full bg-primary py-2.5 font-semibold text-primary-foreground"
+                >
+                  Ver planes
+                </Link>
+                <button
+                  onClick={() => {
+                    setGate("checking");
+                    void (async () => {
+                      const ok = await credits.startSession();
+                      setGate(ok ? "ok" : "blocked");
+                    })();
+                  }}
+                  className="mt-2 w-full rounded-full border border-border py-2 text-sm font-semibold text-muted-foreground"
+                >
+                  Ya compré — reintentar
+                </button>
+              </>
+            ) : null}
+          </div>
         </div>
       ) : null}
     </main>
