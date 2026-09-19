@@ -133,7 +133,6 @@ export function DominoTile({
   const dims = SIZES[size];
   const width = orientation === "v" ? dims.short : dims.long;
   const height = orientation === "v" ? dims.long : dims.short;
-
   return (
     <div
       role={onClick ? "button" : undefined}
@@ -161,7 +160,14 @@ export function DominoTile({
         dimmed && "opacity-45 saturate-50",
         className,
       )}
-      style={{ width, height, ...style }}
+      style={{
+        width,
+        height,
+        // textura del skin pintada sobre el gradiente (solo fichas visibles)
+        backgroundImage: faceDown ? undefined : "var(--bone-texture, none)",
+        backgroundBlendMode: faceDown ? undefined : "overlay",
+        ...style,
+      }}
     >
       {faceDown ? (
         <div className="absolute inset-[12%] rounded-[8%] border border-white/10 bg-[repeating-linear-gradient(45deg,oklch(1_0_0/0.05)_0_3px,transparent_3px_6px)]" />
@@ -170,9 +176,7 @@ export function DominoTile({
           <div className="relative flex-1">
             <Face value={tile?.a ?? 0} />
           </div>
-          <div
-            className={cn("bg-pip/25", orientation === "v" ? "mx-[12%] h-px" : "my-[12%] w-px")}
-          />
+          <div className={cn("bg-pip/25", orientation === "v" ? "mx-[12%] h-px" : "my-[12%] w-px")} />
           <div className="relative flex-1">
             <Face value={tile?.b ?? 0} />
           </div>
