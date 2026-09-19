@@ -83,6 +83,21 @@ export const UNLOCKABLES: Unlockable[] = [
   { id: "arena", kind: "theme", label: "Arena de Varadero", level: 33 },
   { id: "medianoche", kind: "theme", label: "Medianoche", level: 45 },
 
+  // temas (texturas de mesa)
+{ id: "marmol", kind: "theme", label: "Mármol blanco", level: 4 },
+{ id: "cemento", kind: "theme", label: "Cemento pulido", level: 8 },
+{ id: "baldosa", kind: "theme", label: "Baldosa criolla", level: 13 },
+{ id: "metal", kind: "theme", label: "Metal cepillado", level: 20 },
+{ id: "marmol-negro", kind: "theme", label: "Mármol negro", level: 28 },
+{ id: "caoba", kind: "theme", label: "Caoba real", level: 38 },
+{ id: "cromo", kind: "theme", label: "Cromo espejo", level: 50 },
+  
+// fichas
+{ id: "roble", kind: "skin", label: "Roble", level: 14 },
+{ id: "marmol", kind: "skin", label: "Mármol", level: 24 },
+{ id: "cromo", kind: "skin", label: "Cromo", level: 33 },
+{ id: "estelar", kind: "skin", label: "Estelar", level: 70 },
+
   // diseños de ficha
   { id: "hueso", kind: "skin", label: "Hueso clásico", level: 1 },
   { id: "marfil", kind: "skin", label: "Marfil", level: 5 },
@@ -155,6 +170,7 @@ export const TILE_SKINS: Record<string, { bone: string; boneEdge: string; pip: s
   jade: { bone: "oklch(0.72 0.11 160)", boneEdge: "oklch(0.55 0.1 160)", pip: "oklch(0.2 0.04 160)", texture: `radial-gradient(60% 40% at 30% 25%, oklch(1 0 0 / 0.25), transparent 70%)` },
   oro: { bone: "oklch(0.85 0.13 88)", boneEdge: "oklch(0.68 0.14 70)", pip: "oklch(0.26 0.05 60)", texture: `repeating-linear-gradient(90deg, oklch(1 0 0 / 0.1) 0 1px, transparent 1px 3px, oklch(0 0 0 / 0.08) 3px 4px, transparent 4px 6px)` },
   neon: { bone: "oklch(0.32 0.05 300)", boneEdge: "oklch(0.2 0.05 300)", pip: "oklch(0.85 0.2 190)" },
+  
   // NUEVOS
   roble: { bone: "oklch(0.78 0.06 70)", boneEdge: "oklch(0.64 0.06 65)", pip: "oklch(0.3 0.05 50)", texture: `repeating-linear-gradient(91deg, oklch(0.2 0.06 60 / 0.16) 0 1px, transparent 1px 6px, oklch(1 0 0 / 0.08) 6px 7px, transparent 7px 13px)` },
   marmol: { bone: "oklch(0.94 0.008 250)", boneEdge: "oklch(0.82 0.012 250)", pip: "oklch(0.4 0.03 250)", texture: `repeating-linear-gradient(110deg, transparent 0 10px, oklch(0.5 0.02 250 / 0.18) 10px 10.8px, transparent 10.8px 24px), radial-gradient(40% 30% at 70% 30%, oklch(1 0 0 / 0.5), transparent 70%)` },
