@@ -1,0 +1,6 @@
+{
+  "name": "Domino Cubamerica",
+  "description": "Cuban Dominoes online game platform with matchmaking, tournaments, and bots",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

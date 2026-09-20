@@ -12,7 +12,8 @@ export const Route = createFileRoute("/auth")({
       { title: "Entrar o crear cuenta | Domino" },
       {
         name: "description",
-        content: "Inicia sesión en Domino para guardar tu nivel, ranking, amigos y personalización.",
+        content:
+          "Inicia sesión en Domino para guardar tu nivel, ranking, amigos y personalización.",
       },
       { property: "og:title", content: "Entrar en Domino" },
       { property: "og:description", content: "Accede para jugar dominó cubano online." },
@@ -75,7 +76,8 @@ function Auth() {
       </button>
 
       <div className="my-4 flex items-center gap-3 text-xs text-muted-foreground">
-        <div className="h-px flex-1 bg-border" /> o con correo <div className="h-px flex-1 bg-border" />
+        <div className="h-px flex-1 bg-border" /> o con correo{" "}
+        <div className="h-px flex-1 bg-border" />
       </div>
 
       <form onSubmit={submit} className="grid gap-3">

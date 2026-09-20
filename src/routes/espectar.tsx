@@ -52,16 +52,30 @@ function Espectar() {
     return (
       <main className="mx-auto w-full max-w-3xl px-4 py-6">
         <AppNav />
-        <h1 className="font-display text-3xl font-extrabold">Partidas en vivo</h1>
-        <p className="glass-panel mt-4 rounded-2xl p-4 text-sm text-muted-foreground">
-          Entra con tu cuenta para mirar las partidas que se están jugando.
-        </p>
-        <Link
-          to="/auth"
-          className="mt-3 inline-flex rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground"
-        >
-          Iniciar sesión
-        </Link>
+        <div className="glass-panel mt-4 rounded-3xl p-6 text-center">
+          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gold/15 text-gold text-2xl">
+            🌐
+          </div>
+          <h1 className="font-display text-2xl font-bold">Salas Online y En Vivo</h1>
+          <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+            Para entrar a salas multiplayer online o mirar partidas en vivo es obligatorio iniciar
+            sesión. Puedes jugar partidas sin cuenta directamente contra los Bots.
+          </p>
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+            <Link
+              to="/auth"
+              className="rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105"
+            >
+              Iniciar sesión o registrarse
+            </Link>
+            <Link
+              to="/jugar"
+              className="rounded-full border border-border px-5 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Jugar contra Bots
+            </Link>
+          </div>
+        </div>
       </main>
     );
   }
@@ -77,7 +91,9 @@ function LiveList() {
   const load = useCallback(async () => {
     const { data } = await supabase
       .from("lobby_rooms")
-      .select("id, code, name, status, theme, flag, target_score, max_players, player_count, created_at")
+      .select(
+        "id, code, name, status, theme, flag, target_score, max_players, player_count, created_at",
+      )
       .in("status", ["playing", "waiting"])
       .order("created_at", { ascending: false });
     setRooms((data ?? []) as RoomRow[]);
@@ -136,8 +152,8 @@ function LiveList() {
 
         {loaded && !rooms.length ? (
           <p className="glass-panel rounded-2xl p-4 text-sm text-muted-foreground">
-            No hay salas activas ahora mismo. Cuando alguien abra una sala multiplayer
-            pública, aparecerá aquí y podrás mirar su mesa en vivo.
+            No hay salas activas ahora mismo. Cuando alguien abra una sala multiplayer pública,
+            aparecerá aquí y podrás mirar su mesa en vivo.
           </p>
         ) : null}
       </div>

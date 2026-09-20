@@ -35,7 +35,10 @@ export const Route = createFileRoute("/planes")({
   head: () => ({
     meta: [
       { title: "Planes y pagos | Domino" },
-      { name: "description", content: "Planes semanales, mensuales y anuales para jugar sin límites en Domino." },
+      {
+        name: "description",
+        content: "Planes semanales, mensuales y anuales para jugar sin límites en Domino.",
+      },
     ],
   }),
   component: Planes,
@@ -117,17 +120,16 @@ function Planes() {
       <AppNav />
       <h1 className="font-display text-3xl font-extrabold">Planes</h1>
       <p className="mt-1 text-xs text-muted-foreground">
-        La cuenta gratuita incluye 30 minutos de juego cada 48 horas. Con un plan:
-        juegas sin límite, desbloqueas recompensas hasta tu nivel y entras a torneos.
-        El tiempo del plan corre por calendario, juegues o no.
+        La cuenta gratuita incluye 30 minutos de juego cada 48 horas. Con un plan: juegas sin
+        límite, desbloqueas recompensas hasta tu nivel y entras a torneos. El tiempo del plan corre
+        por calendario, juegues o no.
       </p>
 
       {premium ? (
         <div className="glass-panel mt-4 rounded-2xl border border-gold/50 p-4">
           <p className="font-display text-sm font-bold text-gold">✓ Plan activo</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Vence el{" "}
-            {planExpiresAt ? new Date(planExpiresAt).toLocaleString("es") : "—"}
+            Vence el {planExpiresAt ? new Date(planExpiresAt).toLocaleString("es") : "—"}
           </p>
         </div>
       ) : null}
@@ -136,8 +138,8 @@ function Planes() {
         <div className="glass-panel mt-4 rounded-2xl p-4">
           <p className="text-sm font-semibold">⏳ Compra en revisión</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Registraste un pago por {pending.plan_id} vía {pending.method}. Se activa
-            cuando el administrador lo apruebe.
+            Registraste un pago por {pending.plan_id} vía {pending.method}. Se activa cuando el
+            administrador lo apruebe.
           </p>
         </div>
       ) : null}
@@ -154,9 +156,7 @@ function Planes() {
             )}
           >
             <p className="font-display text-base font-bold">{p.label}</p>
-            <p className="mt-2 font-display text-2xl font-extrabold text-gold">
-              {p.price_cup} CUP
-            </p>
+            <p className="mt-2 font-display text-2xl font-extrabold text-gold">{p.price_cup} CUP</p>
             <p className="mt-1 text-xs text-muted-foreground">
               ≈ ${p.price_usd.toFixed(2)} USD
               {p.price_eur ? ` · €${p.price_eur.toFixed(2)}` : ""}
@@ -280,8 +280,7 @@ function Planes() {
             {purchases.map((p) => (
               <div key={p.id} className="flex items-center justify-between py-2">
                 <span className="text-xs text-muted-foreground">
-                  {new Date(p.created_at).toLocaleDateString("es")} · {p.plan_id} ·{" "}
-                  {p.method}
+                  {new Date(p.created_at).toLocaleDateString("es")} · {p.plan_id} · {p.method}
                 </span>
                 <span
                   className={cn(

@@ -138,6 +138,11 @@ export function DominoTile({
   const dims = SIZES[size];
   const width = orientation === "v" ? dims.short : dims.long;
   const height = orientation === "v" ? dims.long : dims.short;
+
+  const defaultBg = faceDown
+    ? "linear-gradient(150deg, var(--rail), color-mix(in oklab, var(--rail) 65%, black))"
+    : "linear-gradient(160deg, var(--bone), var(--bone-edge))";
+
   return (
     <div
       role={onClick ? "button" : undefined}
@@ -153,11 +158,10 @@ export function DominoTile({
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       className={cn(
-        "relative shrink-0 select-none rounded-[18%/9%] transition-all duration-200",
+        "relative shrink-0 select-none rounded-[5px] transition-all duration-200",
         faceDown
-          ? "bg-[linear-gradient(150deg,var(--rail),color-mix(in_oklab,var(--rail)_65%,black))] ring-1 ring-black/40"
-          : "bg-[linear-gradient(160deg,var(--bone),var(--bone-edge))] ring-1 ring-black/25",
-        "shadow-[var(--shadow-tile)]",
+          ? "ring-1 ring-black/40"
+          : "ring-1 ring-black/35 shadow-[0_2px_6px_rgba(0,0,0,0.35)]",
         onClick && "cursor-pointer",
         playable && "hover:-translate-y-1.5 hover:shadow-[0_14px_26px_-10px_oklch(0_0_0/0.8)]",
         selected &&
@@ -168,20 +172,34 @@ export function DominoTile({
       style={{
         width,
         height,
-        backgroundImage: faceDown ? undefined : "var(--bone-texture, none)",
-        backgroundBlendMode: faceDown ? undefined : "overlay",
+        backgroundColor: faceDown ? "var(--rail)" : "var(--bone)",
+        backgroundImage: defaultBg,
         ...style,
       }}
     >
       {faceDown ? (
-        <div className="absolute inset-[12%] rounded-[8%] border border-white/10 bg-[repeating-linear-gradient(45deg,oklch(1_0_0/0.05)_0_3px,transparent_3px_6px)]" />
+        <div className="absolute inset-[10%] rounded-[3px] border border-white/10 bg-[repeating-linear-gradient(45deg,oklch(1_0_0/0.05)_0_3px,transparent_3px_6px)]" />
       ) : (
         <div className={cn("flex h-full w-full", orientation === "v" ? "flex-col" : "flex-row")}>
-          <div className="relative flex-1">
+          <div className="relative flex-1 overflow-hidden">
             <Face value={tile?.a ?? 0} />
           </div>
-          <div className={cn("bg-pip/25", orientation === "v" ? "mx-[12%] h-px" : "my-[12%] w-px")} />
-          <div className="relative flex-1">
+          <div
+            className={cn(
+              "relative flex shrink-0 items-center justify-center",
+              orientation === "v" ? "h-[2px] w-full" : "h-full w-[2px]",
+            )}
+          >
+            <div
+              className={cn(
+                "bg-black/40 shadow-[0_0.5px_0_rgba(255,255,255,0.4)]",
+                orientation === "v" ? "mx-[8%] h-[1.5px] w-[84%]" : "my-[8%] h-[84%] w-[1.5px]",
+              )}
+            />
+            {/* Tachuela / Remache de latón tradicional en el centro de la ficha */}
+            <span className="pointer-events-none absolute h-1.5 w-1.5 rounded-full bg-[radial-gradient(circle_at_35%_35%,#fff0ad,#c4971a_60%,#5c4300)] shadow-[0_0.5px_1px_rgba(0,0,0,0.7)]" />
+          </div>
+          <div className="relative flex-1 overflow-hidden">
             <Face value={tile?.b ?? 0} />
           </div>
         </div>

@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppNav } from "@/components/AppNav";
+import { SoundToggle } from "@/components/SoundToggle";
 import { GameTable, type SeatInfo } from "@/components/domino/GameTable";
 import { chooseBotMove } from "@/lib/domino/bot";
 import { useAuth } from "@/hooks/useAuth";
-import { usePlayCredits } from "@/hooks/usePlayCredits";
 import { useProfile } from "@/hooks/useProfile";
 import type { ChatBubble } from "@/lib/domino/chat";
 import {
@@ -37,7 +37,10 @@ export const Route = createFileRoute("/jugar")({
           "Juega dominó cubano contra bots: doble 6 o doble 9, en pareja o 1 vs 1, con mesa animada y chat rápido.",
       },
       { property: "og:title", content: "Jugar dominó cubano" },
-      { property: "og:description", content: "Mesa de dominó doble 6 o doble 9 contra la máquina." },
+      {
+        property: "og:description",
+        content: "Mesa de dominó doble 6 o doble 9 contra la máquina.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -48,24 +51,10 @@ export const Route = createFileRoute("/jugar")({
 const BOT_NAMES = ["Yuniel", "Marisol", "El Chino"];
 const BOT_FLAGS = ["es", "mx", "do"];
 
-type Gate = "checking" | "guest" | "ok" | "blocked";
-
-function fmtTime(sec: number): string {
-  const h = Math.floor(sec / 3600);
-  const m = Math.floor((sec % 3600) / 60);
-  const s = sec % 60;
-  const mm = String(m).padStart(2, "0");
-  const ss = String(s).padStart(2, "0");
-  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
-}
-
 function Jugar() {
   const { v } = Route.useSearch();
   const { user } = useAuth();
   const { profile, progress } = useProfile(user?.id);
-  const credits = usePlayCredits();
-  const [gate, setGate] = useState<Gate>("checking");
-  const [shown, setShown] = useState<number | null>(null);
 
   const preset = VARIANTS.find((x) => x.id === v) ?? VARIANTS[0]!;
   const [state, setState] = useState<GameState>(() =>
@@ -83,44 +72,6 @@ function Jugar() {
     setState(createGame({ targetScore: 100, variant: preset.variant }));
     sfx.deal();
   }, [preset.id]);
-
-  /* ── GATE: verificar sesión/tiempo al entrar (el servidor decide) ── */
-  useEffect(() => {
-    let alive = true;
-    if (!user) {
-      setGate("guest");
-      return;
-    }
-    setGate("checking");
-    void (async () => {
-      const ok = await credits.startSession();
-      if (alive) setGate(ok ? "ok" : "blocked");
-    })();
-    return () => {
-      alive = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
-
-  /* ── Reloj: latido cada 30 s al servidor (solo cuentas gratuitas) ── */
-  useEffect(() => {
-    if (gate !== "ok" || credits.premium) return;
-    const id = setInterval(() => {
-      void credits.tick();
-    }, 30_000);
-    return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gate, credits.premium]);
-
-  /* ── Cuenta atrás suave para mostrar ⏱ (se resincroniza con el tick) ── */
-  useEffect(() => {
-    setShown(credits.freeSeconds);
-  }, [credits.freeSeconds]);
-  useEffect(() => {
-    if (credits.premium || gate !== "ok") return;
-    const id = setInterval(() => setShown((s) => (s !== null && s > 0 ? s - 1 : 0)), 1000);
-    return () => clearInterval(id);
-  }, [credits.premium, gate]);
 
   const themeId = profile?.table_theme ?? "madera";
   const tileSkin = profile?.tile_skin ?? "hueso";
@@ -203,16 +154,9 @@ function Jugar() {
     setTimeout(() => setBubbles((b) => b.filter((x) => x.id !== bubble.id)), 5000);
   }
 
-  /* ── Continuar a la siguiente mano: re-chequea el tiempo en servidor ── */
-  async function handleContinue() {
+  /* ── Continuar a la siguiente mano ── */
+  function handleContinue() {
     sfx.click();
-    if (!credits.premium) {
-      const ok = await credits.startSession();
-      if (!ok) {
-        setGate("blocked");
-        return;
-      }
-    }
     setState((cur) =>
       cur.phase === "game_over"
         ? createGame({ targetScore: cur.targetScore, variant: cur.variant })
@@ -224,12 +168,20 @@ function Jugar() {
   useEffect(() => {
     if (state.phase === "playing") return;
     if (state.phase === "game_over") {
-      state.winnerTeam === 0 ? sfx.win() : sfx.lose();
+      if (state.winnerTeam === 0) {
+        sfx.win();
+      } else {
+        sfx.lose();
+      }
       return;
     }
     if (last?.type === "blocked") sfx.block();
     else if (last?.type === "domino") {
-      teamOfSeat(last.seat, state.players) === 0 ? sfx.win() : sfx.lose();
+      if (teamOfSeat(last.seat, state.players) === 0) {
+        sfx.win();
+      } else {
+        sfx.lose();
+      }
     }
   }, [state.phase, state.handNumber]);
 
@@ -245,31 +197,40 @@ function Jugar() {
             {preset.label} · a {state.targetScore} · mano {state.handNumber}
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-4 rounded-2xl glass-panel px-4 py-2">
+        <div className="flex shrink-0 items-center gap-3 rounded-2xl glass-panel px-3.5 py-2">
           <Score label="Nosotros" value={state.scores[0]} tone="a" />
           <div className="h-8 w-px bg-border" />
           <Score label="Ellos" value={state.scores[1]} tone="b" />
-          {/* Reloj de cuenta gratuita */}
-          {!credits.premium && user && shown !== null ? (
-            <>
-              <div className="h-8 w-px bg-border" />
-              <div className="text-center">
-                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                  Tu tiempo
-                </p>
-                <p
-                  className={cn(
-                    "font-display text-sm font-bold tabular-nums",
-                    shown <= 300 ? "text-destructive" : "text-foreground",
-                  )}
-                >
-                  ⏱ {fmtTime(shown)}
-                </p>
-              </div>
-            </>
-          ) : null}
+          <div className="h-8 w-px bg-border" />
+          <SoundToggle id="game-sound-toggle" size="sm" />
         </div>
       </header>
+
+      {!user ? (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gold/30 bg-card/60 px-4 py-2.5 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="flex h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-foreground">
+              <strong className="text-gold">Mesa contra Bots (Gratis e Ilimitado):</strong> Juega
+              sin límite de tiempo. Para jugar con amigos o en torneos, puedes iniciar sesión.
+            </span>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <Link
+              to="/auth"
+              className="rounded-full bg-primary px-3.5 py-1 text-xs font-semibold text-primary-foreground transition-transform hover:scale-105"
+            >
+              Iniciar sesión
+            </Link>
+            <Link
+              to="/amigos"
+              className="rounded-full border border-border px-3 py-1 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Jugar con amigos
+            </Link>
+          </div>
+        </div>
+      ) : null}
 
       <GameTable
         state={state}
@@ -305,7 +266,7 @@ function Jugar() {
               {state.scores[0]} — {state.scores[1]}
             </p>
             <button
-              onClick={() => void handleContinue()}
+              onClick={() => handleContinue()}
               className="mt-5 w-full rounded-full bg-primary py-2.5 font-semibold text-primary-foreground transition-transform hover:scale-[1.02]"
             >
               {state.phase === "game_over" ? "Partida nueva" : "Siguiente mano"}
@@ -317,65 +278,6 @@ function Jugar() {
       {toast ? (
         <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full bg-destructive px-5 py-2 text-sm font-medium text-destructive-foreground shadow-lg">
           {toast}
-        </div>
-      ) : null}
-
-      {/* ── PUERTA DE ACCESO (cubre la mesa hasta verificarse) ── */}
-      {gate !== "ok" ? (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-          <div className="glass-panel w-full max-w-sm animate-scale-in rounded-3xl p-6 text-center">
-            {gate === "checking" ? (
-              <>
-                <p className="animate-pulse font-display text-lg font-bold">Verificando tu cuenta…</p>
-                <p className="mt-2 text-xs text-muted-foreground">Comprobando tu tiempo de juego.</p>
-              </>
-            ) : null}
-
-            {gate === "guest" ? (
-              <>
-                <p className="font-display text-xl font-bold">Inicia sesión para jugar</p>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  La cuenta gratuita incluye 30 minutos cada 48 horas, y guarda tu nivel,
-                  ranking y recompensas.
-                </p>
-                <Link
-                  to="/auth"
-                  className="mt-5 block w-full rounded-full bg-primary py-2.5 font-semibold text-primary-foreground"
-                >
-                  Iniciar sesión o registrarse
-                </Link>
-              </>
-            ) : null}
-
-            {gate === "blocked" ? (
-              <>
-                <p className="font-display text-xl font-bold">Te quedaste sin tiempo ⏱</p>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Agotaste tus 30 minutos gratis. Con un plan juegas sin límite,
-                  desbloqueas recompensas y entras a torneos. El próximo tiempo gratis
-                  llega en 48 horas.
-                </p>
-                <Link
-                  to="/planes"
-                  className="mt-5 block w-full rounded-full bg-primary py-2.5 font-semibold text-primary-foreground"
-                >
-                  Ver planes
-                </Link>
-                <button
-                  onClick={() => {
-                    setGate("checking");
-                    void (async () => {
-                      const ok = await credits.startSession();
-                      setGate(ok ? "ok" : "blocked");
-                    })();
-                  }}
-                  className="mt-2 w-full rounded-full border border-border py-2 text-sm font-semibold text-muted-foreground"
-                >
-                  Ya compré — reintentar
-                </button>
-              </>
-            ) : null}
-          </div>
         </div>
       ) : null}
     </main>

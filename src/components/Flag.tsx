@@ -38,10 +38,10 @@ export function Flag({
       loading="lazy"
       draggable={false}
       className={cn(
-        "inline-block rounded-[2px] object-cover shadow-sm bg-transparent",
+        "inline-block shrink-0 rounded-[2px] object-contain shadow-xs bg-transparent",
         className,
       )}
-      style={{ width: size, height: Math.round(size * 0.75) }}
+      style={{ width: size, height: Math.round((size * 2) / 3), minWidth: size }}
     />
   );
 }

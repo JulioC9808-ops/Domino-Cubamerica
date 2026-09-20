@@ -114,11 +114,8 @@
   --sidebar-border: oklch(0.32 0.03 255);
   --sidebar-ring: oklch(0.74 0.17 47);
 
-  --gradient-night: radial-gradient(
-      120% 90% at 50% -10%,
-      oklch(0.32 0.07 250) 0%,
-      transparent 60%
-    ),
+  --gradient-night:
+    radial-gradient(120% 90% at 50% -10%, oklch(0.32 0.07 250) 0%, transparent 60%),
     linear-gradient(180deg, oklch(0.17 0.03 258) 0%, oklch(0.13 0.025 260) 100%);
   --gradient-gold: linear-gradient(135deg, oklch(0.86 0.14 88), oklch(0.72 0.17 45));
   --shadow-tile: 0 1px 0 oklch(1 0 0 / 0.7) inset, 0 6px 14px -6px oklch(0 0 0 / 0.65);
@@ -127,6 +124,35 @@
 
 .dark {
   color-scheme: dark;
+}
+
+.light {
+  color-scheme: light;
+  --background: oklch(0.96 0.015 250);
+  --foreground: oklch(0.2 0.035 258);
+  --card: oklch(0.99 0.008 250);
+  --card-foreground: oklch(0.2 0.035 258);
+  --popover: oklch(0.99 0.008 250);
+  --popover-foreground: oklch(0.2 0.035 258);
+  --primary: oklch(0.68 0.18 47);
+  --primary-foreground: oklch(0.99 0.005 90);
+  --secondary: oklch(0.92 0.02 250);
+  --secondary-foreground: oklch(0.22 0.03 258);
+  --muted: oklch(0.91 0.015 250);
+  --muted-foreground: oklch(0.48 0.03 250);
+  --accent: oklch(0.62 0.14 200);
+  --accent-foreground: oklch(0.98 0.01 90);
+  --destructive: oklch(0.58 0.22 25);
+  --destructive-foreground: oklch(0.98 0.01 90);
+  --border: oklch(0.84 0.02 250);
+  --input: oklch(0.84 0.02 250);
+  --ring: oklch(0.68 0.18 47);
+
+  --gradient-night:
+    radial-gradient(120% 90% at 50% -10%, oklch(0.95 0.025 80) 0%, transparent 60%),
+    linear-gradient(180deg, oklch(0.96 0.01 90) 0%, oklch(0.91 0.02 250) 100%);
+  --shadow-tile: 0 1px 0 oklch(1 0 0 / 0.9) inset, 0 4px 12px -3px oklch(0 0 0 / 0.15);
+  --shadow-lift: 0 16px 36px -16px oklch(0 0 0 / 0.18);
 }
 
 @layer base {
@@ -209,13 +235,12 @@
 }
 
 @utility felt-surface {
-  background:
-    radial-gradient(
-      110% 80% at 50% 25%,
-      color-mix(in oklab, var(--felt) 88%, white 12%) 0%,
-      var(--felt) 45%,
-      var(--felt-deep) 100%
-    );
+  background: radial-gradient(
+    110% 80% at 50% 25%,
+    color-mix(in oklab, var(--felt) 88%, white 12%) 0%,
+    var(--felt) 45%,
+    var(--felt-deep) 100%
+  );
   position: relative;
   isolation: isolate;
 
@@ -226,11 +251,7 @@
     pointer-events: none;
     opacity: 0.5;
     background-image:
-      repeating-linear-gradient(
-        45deg,
-        oklch(1 0 0 / 0.024) 0 2px,
-        transparent 2px 4px
-      ),
+      repeating-linear-gradient(45deg, oklch(1 0 0 / 0.024) 0 2px, transparent 2px 4px),
       repeating-linear-gradient(-45deg, oklch(0 0 0 / 0.03) 0 2px, transparent 2px 4px);
     border-radius: inherit;
   }
@@ -252,11 +273,7 @@
         oklch(1 0 0 / 0.05) 7px 8px,
         transparent 8px 15px
       ),
-      repeating-linear-gradient(
-        88deg,
-        oklch(0 0 0 / 0.1) 0 1px,
-        transparent 1px 26px
-      ),
+      repeating-linear-gradient(88deg, oklch(0 0 0 / 0.1) 0 1px, transparent 1px 26px),
       radial-gradient(60% 40% at 20% 30%, oklch(0 0 0 / 0.18), transparent 70%),
       radial-gradient(50% 35% at 80% 70%, oklch(0 0 0 / 0.16), transparent 70%);
   }
@@ -307,6 +324,5 @@
   mix-blend-mode: normal !important;
   opacity: 1 !important;
   box-shadow: none !important; /* elimina sombras que oscurecen */
-  border: none !important;     /* elimina bordes oscuros */
+  border: none !important; /* elimina bordes oscuros */
 }
-

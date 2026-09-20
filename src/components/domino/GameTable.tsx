@@ -63,9 +63,13 @@ export function GameTable({
   const [drag, setDrag] = useState<{ key: string; x: number; y: number } | null>(null);
   const pressRef = useRef<{ key: string; x: number; y: number } | null>(null);
   const movedRef = useRef(false);
+  const tableRef = useRef<HTMLDivElement>(null);
+  const boardRef = useRef<HTMLDivElement>(null);
+  const handRef = useRef<HTMLDivElement>(null);
   const players = state.players;
   const myTurn = state.turn === mySeat && state.phase === "playing";
-  const hand = state.hands[mySeat] ?? [];
+  const rawHand = state.hands[mySeat];
+  const hand = useMemo(() => rawHand ?? [], [rawHand]);
 
   useEffect(() => {
     if (!myTurn) setSelected(null);
@@ -134,16 +138,68 @@ export function GameTable({
       if (!p) return;
       if (movedRef.current) {
         setDrag(null);
-        const el = document.elementFromPoint(e.clientX, e.clientY);
-        const zone = el?.closest?.("[data-drop-side]") as HTMLElement | null | undefined;
-        const side = zone?.dataset?.dropSide as Side | undefined;
-        if (!side) return;
         const tile = state.hands[mySeat]?.find((t) => tileKey(t) === p.key);
         if (!tile) return;
         const c = canPlaceTile(state, tile);
-        const ok =
-          state.board.length === 0 ? side === "right" : side === "left" ? c.left : c.right;
-        if (ok) attempt(tile, side);
+        const playable = empty || c.left || c.right;
+        if (!playable) return;
+
+        // Verificar si fue soltada sobre la mesa o fuera de la mano
+        const tableEl = tableRef.current;
+        const handEl = handRef.current;
+        const tableRect = tableEl?.getBoundingClientRect();
+        const handRect = handEl?.getBoundingClientRect();
+
+        const el = document.elementFromPoint(e.clientX, e.clientY);
+        const zone = el?.closest?.("[data-drop-side]") as HTMLElement | null | undefined;
+        const directSide = zone?.dataset?.dropSide as Side | undefined;
+
+        // Se considera arrastrada a la mesa si cayó sobre la mesa o por encima de la mano
+        const droppedOnTable =
+          Boolean(directSide) ||
+          (tableRect &&
+            e.clientX >= tableRect.left - 40 &&
+            e.clientX <= tableRect.right + 40 &&
+            e.clientY >= tableRect.top - 40 &&
+            e.clientY < (handRect ? handRect.top + 20 : tableRect.bottom - 60));
+
+        if (!droppedOnTable) return;
+
+        // 1. Si cayó directo sobre una ficha extrema del tablero con data-drop-side
+        if (directSide) {
+          const sideOk = empty ? true : directSide === "left" ? c.left : c.right;
+          if (sideOk) {
+            attempt(tile, empty ? "right" : directSide);
+            return;
+          }
+        }
+
+        // 2. Si la mesa está vacía (primera ficha de la mano)
+        if (empty) {
+          attempt(tile, "right");
+          return;
+        }
+
+        // 3. Si la ficha solo puede entrar por un único extremo
+        if (c.left && !c.right) {
+          attempt(tile, "left");
+          return;
+        }
+        if (!c.left && c.right) {
+          attempt(tile, "right");
+          return;
+        }
+
+        // 4. Si la ficha puede entrar por AMBOS extremos:
+        // Determinar según la mitad izquierda o derecha de la mesa/tablero
+        if (c.left && c.right) {
+          const boardEl = boardRef.current ?? tableEl;
+          const rect = boardEl ? boardEl.getBoundingClientRect() : tableRect!;
+          const centerX = rect.left + rect.width / 2;
+          const chosenSide: Side = e.clientX < centerX ? "left" : "right";
+          attempt(tile, chosenSide);
+          return;
+        }
         return;
       }
       // tap (sin arrastre)
@@ -179,7 +235,10 @@ export function GameTable({
         } as React.CSSProperties
       }
     >
-      <div className="felt-surface rail-edge relative overflow-hidden rounded-[2rem]">
+      <div
+        ref={tableRef}
+        className="felt-surface rail-edge relative overflow-hidden rounded-[2rem]"
+      >
         {/* Bandera PURA visible solo para quien la activó + textura del tema encima */}
         {tableFlag ? (
           <div className="pointer-events-none absolute inset-0 z-0">
@@ -225,7 +284,7 @@ export function GameTable({
               />
             ) : null}
 
-            <div className="relative min-w-0">
+            <div ref={boardRef} className="relative min-w-0">
               <BoardSnake
                 board={state.board}
                 players={players}
@@ -269,14 +328,22 @@ export function GameTable({
               count={hand.length}
               me
             />
-            <div className="no-scrollbar flex w-full items-end justify-start gap-1.5 overflow-x-auto px-1 pb-1 sm:justify-center sm:gap-2">
+            <div
+              ref={handRef}
+              className="no-scrollbar flex w-full items-end justify-start gap-1.5 overflow-x-auto px-1 pb-1 sm:justify-center sm:gap-2"
+            >
               {hand.map((tile, i) => {
                 const c = canPlaceTile(state, tile);
                 const playable = myTurn && (empty || c.left || c.right);
+                const isDraggingThis = drag?.key === tileKey(tile);
                 return (
                   <div
                     key={tileKey(tile)}
-                    className={cn("animate-deal", playable && "touch-none")}
+                    className={cn(
+                      "animate-deal select-none",
+                      playable && "touch-none cursor-grab active:cursor-grabbing",
+                      isDraggingThis && "opacity-25 scale-95",
+                    )}
                     style={{ animationDelay: `${i * 40}ms` }}
                     onPointerDown={(e) => handleTilePointerDown(e, tile)}
                   >
@@ -293,11 +360,7 @@ export function GameTable({
               })}
             </div>
             <div className="flex w-full items-end justify-between gap-2">
-              {onSay ? (
-                <QuickChat level={myLevel} bubbles={bubbles} onSend={onSay} />
-              ) : (
-                <span />
-              )}
+              {onSay ? <QuickChat level={myLevel} bubbles={bubbles} onSend={onSay} /> : <span />}
               {mustPass ? (
                 <button
                   onClick={() => {
@@ -354,7 +417,12 @@ function OpponentRow({
   const vertical = layout !== "top";
   const partner = state.players === 4 && (seat - mySeat + 4) % 4 === 2;
   return (
-    <div className={cn("flex items-center gap-2", vertical ? "w-14 flex-col sm:w-20" : "flex-col")}>
+    <div
+      className={cn(
+        "flex items-center gap-2",
+        vertical ? "w-auto min-w-[3.5rem] max-w-[8rem] flex-col sm:min-w-[4.5rem]" : "flex-col",
+      )}
+    >
       <SeatBadge
         seat={seat}
         players={state.players}
@@ -405,22 +473,30 @@ function SeatBadge({
   return (
     <div
       className={cn(
-        "flex items-center gap-2 rounded-full px-2.5 py-1 text-xs font-semibold backdrop-blur transition-all",
+        "inline-flex w-auto max-w-none items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold backdrop-blur transition-all",
         team === 0 ? "bg-team-a/15 text-team-a" : "bg-team-b/15 text-team-b",
         active && "ring-2 ring-gold shadow-[0_0_18px_-4px_var(--gold)]",
-        compact && "flex-col gap-0.5 px-1.5 text-[10px]",
+        compact && "flex-col gap-1 px-2 py-1 text-[11px]",
       )}
       style={{ border: FRAME_RING[info?.frame ?? "none"] }}
     >
-      <Flag code={info?.flag} size={compact ? 14 : 18} />
-      <span className={cn("max-w-[8rem] truncate", compact && "max-w-[4rem]")}>
+      <div className="flex shrink-0 items-center justify-center">
+        <Flag code={info?.flag} size={compact ? 16 : 20} />
+      </div>
+      <span className="whitespace-nowrap font-medium leading-none">
         {info?.name ?? "Libre"}
         {partner ? " · pareja" : ""}
       </span>
-      {info?.level ? <span className="opacity-70">n{info.level}</span> : null}
-      {!me ? <span className="opacity-70">{count}</span> : null}
-      {thinking ? <span className="animate-pulse text-gold">•••</span> : null}
-      {info && info.connected === false ? <span className="text-destructive">⚠</span> : null}
+      {info?.level ? <span className="shrink-0 opacity-70">n{info.level}</span> : null}
+      {!me ? (
+        <span className="shrink-0 rounded-full bg-black/25 px-1.5 py-0.5 text-[10px] font-bold text-white/90">
+          {count}
+        </span>
+      ) : null}
+      {thinking ? <span className="shrink-0 animate-pulse text-gold">•••</span> : null}
+      {info && info.connected === false ? (
+        <span className="shrink-0 text-destructive">⚠</span>
+      ) : null}
     </div>
   );
 }

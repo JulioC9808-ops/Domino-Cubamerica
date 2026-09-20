@@ -16,8 +16,7 @@ export function usePlayCredits() {
   const [loading, setLoading] = useState(true);
   const lastNotice = useRef(0);
 
-  const premium =
-    planExpiresAt !== null && new Date(planExpiresAt).getTime() > Date.now();
+  const premium = planExpiresAt !== null && new Date(planExpiresAt).getTime() > Date.now();
 
   const refresh = useCallback(async () => {
     if (!user?.id) {
@@ -33,11 +32,7 @@ export function usePlayCredits() {
         .select("seconds_remaining")
         .eq("user_id", user.id)
         .maybeSingle(),
-      supabase
-        .from("plan_access")
-        .select("expires_at")
-        .eq("user_id", user.id)
-        .maybeSingle(),
+      supabase.from("plan_access").select("expires_at").eq("user_id", user.id).maybeSingle(),
     ]);
     setFreeSeconds(credits.data?.seconds_remaining ?? 0);
     setPlanExpiresAt(plan.data?.expires_at ?? null);

@@ -27,10 +27,30 @@ export type Variant = {
 };
 
 export const VARIANTS: { id: string; label: string; short: string; variant: Variant }[] = [
-  { id: "pairs-6", label: "Doble 6 · en pareja", short: "Doble 6 · 2v2", variant: { mode: "pairs", maxPip: 6 } },
-  { id: "pairs-9", label: "Doble 9 · en pareja", short: "Doble 9 · 2v2", variant: { mode: "pairs", maxPip: 9 } },
-  { id: "solo-6", label: "Doble 6 · 1 vs 1", short: "Doble 6 · 1v1", variant: { mode: "solo", maxPip: 6 } },
-  { id: "solo-9", label: "Doble 9 · 1 vs 1", short: "Doble 9 · 1v1", variant: { mode: "solo", maxPip: 9 } },
+  {
+    id: "pairs-6",
+    label: "Doble 6 · en pareja",
+    short: "Doble 6 · 2v2",
+    variant: { mode: "pairs", maxPip: 6 },
+  },
+  {
+    id: "pairs-9",
+    label: "Doble 9 · en pareja",
+    short: "Doble 9 · 2v2",
+    variant: { mode: "pairs", maxPip: 9 },
+  },
+  {
+    id: "solo-6",
+    label: "Doble 6 · 1 vs 1",
+    short: "Doble 6 · 1v1",
+    variant: { mode: "solo", maxPip: 6 },
+  },
+  {
+    id: "solo-9",
+    label: "Doble 9 · 1 vs 1",
+    short: "Doble 9 · 1v1",
+    variant: { mode: "solo", maxPip: 9 },
+  },
 ];
 
 export const variantId = (v: Variant) => `${v.mode}-${v.maxPip}`;
@@ -207,12 +227,7 @@ export function hasLegalMove(state: GameState, seat: number): boolean {
 
 export type MoveResult = { ok: true; state: GameState } | { ok: false; error: string };
 
-export function playTile(
-  state: GameState,
-  seat: number,
-  tile: Tile,
-  side: Side,
-): MoveResult {
+export function playTile(state: GameState, seat: number, tile: Tile, side: Side): MoveResult {
   if (state.phase !== "playing") return { ok: false, error: "La mano ya terminó" };
   if (state.turn !== seat) return { ok: false, error: "No es tu turno" };
 
@@ -227,7 +242,13 @@ export function playTile(
   let board: BoardTile[];
 
   if (state.board.length === 0) {
-    placed = { tile: actual, left: actual.a, right: actual.b, playedBy: seat, key: tileKey(actual) };
+    placed = {
+      tile: actual,
+      left: actual.a,
+      right: actual.b,
+      playedBy: seat,
+      key: tileKey(actual),
+    };
     board = [placed];
     leftEnd = actual.a;
     rightEnd = actual.b;
@@ -333,8 +354,7 @@ function closeHand(
   if (winnerTeam === 1) scores[1] += points;
 
   const events = [...state.events, event];
-  const gameWinner =
-    scores[0] >= state.targetScore ? 0 : scores[1] >= state.targetScore ? 1 : null;
+  const gameWinner = scores[0] >= state.targetScore ? 0 : scores[1] >= state.targetScore ? 1 : null;
 
   if (gameWinner !== null) events.push({ type: "game_over", winnerTeam: gameWinner });
 

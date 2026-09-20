@@ -4,14 +4,24 @@ import { AppNav } from "@/components/AppNav";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 
-type Row = { id: string; username: string; flag: string; player_code: string; level: number; elo: number };
+type Row = {
+  id: string;
+  username: string;
+  flag: string;
+  player_code: string;
+  level: number;
+  elo: number;
+};
 
 export const Route = createFileRoute("/amigos")({
   ssr: false,
   head: () => ({
     meta: [
       { title: "Amigos e invitaciones | Domino" },
-      { name: "description", content: "Busca jugadores por nombre o ID personal e invítalos a tu mesa de dominó." },
+      {
+        name: "description",
+        content: "Busca jugadores por nombre o ID personal e invítalos a tu mesa de dominó.",
+      },
       { property: "og:title", content: "Amigos en Domino" },
       { property: "og:description", content: "Agrega amigos por nombre o ID y juega con ellos." },
       { property: "og:type", content: "website" },
@@ -74,10 +84,30 @@ function Amigos() {
     return (
       <main className="mx-auto w-full max-w-3xl px-4 py-6">
         <AppNav />
-        <p className="text-sm text-muted-foreground">Entra con tu cuenta para gestionar amigos.</p>
-        <Link to="/auth" className="mt-3 inline-flex rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground">
-          Iniciar sesión
-        </Link>
+        <div className="glass-panel mt-4 rounded-3xl p-6 text-center">
+          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gold/15 text-gold text-2xl">
+            👥
+          </div>
+          <h1 className="font-display text-2xl font-bold">Jugar con amigos</h1>
+          <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+            Para jugar con amigos, agregarlos o enviar invitaciones es obligatorio iniciar sesión.
+            El juego contra Bots está disponible de forma libre sin registro.
+          </p>
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+            <Link
+              to="/auth"
+              className="rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105"
+            >
+              Iniciar sesión o registrarse
+            </Link>
+            <Link
+              to="/jugar"
+              className="rounded-full border border-border px-5 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Jugar contra Bots
+            </Link>
+          </div>
+        </div>
       </main>
     );
   }
@@ -95,7 +125,10 @@ function Amigos() {
           placeholder="Nombre o ID personal"
           className="min-w-0 flex-1 rounded-xl border border-input bg-card px-3 py-2 text-sm"
         />
-        <button onClick={() => void search()} className="shrink-0 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground">
+        <button
+          onClick={() => void search()}
+          className="shrink-0 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground"
+        >
           Buscar
         </button>
       </div>
@@ -107,7 +140,15 @@ function Amigos() {
   );
 }
 
-function List({ title, rows, action }: { title: string; rows: Row[]; action?: (id: string) => void }) {
+function List({
+  title,
+  rows,
+  action,
+}: {
+  title: string;
+  rows: Row[];
+  action?: (id: string) => void;
+}) {
   if (!rows.length) return null;
   return (
     <section className="glass-panel mt-5 rounded-2xl p-4">
@@ -117,10 +158,15 @@ function List({ title, rows, action }: { title: string; rows: Row[]; action?: (i
           <li key={r.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-2">
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold">{r.username}</p>
-              <p className="text-xs text-muted-foreground">ID {r.player_code} · Nv {r.level} · {r.elo}</p>
+              <p className="text-xs text-muted-foreground">
+                ID {r.player_code} · Nv {r.level} · {r.elo}
+              </p>
             </div>
             {action ? (
-              <button onClick={() => action(r.id)} className="shrink-0 rounded-full border border-border px-3 py-1 text-xs">
+              <button
+                onClick={() => action(r.id)}
+                className="shrink-0 rounded-full border border-border px-3 py-1 text-xs"
+              >
                 Agregar
               </button>
             ) : null}

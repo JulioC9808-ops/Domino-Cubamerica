@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppNav } from "@/components/AppNav";
+import { WebFooter } from "@/components/WebFooter";
+import { DominoTile } from "@/components/domino/DominoTile";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { tierOf } from "@/lib/domino/levels";
 import { VARIANTS } from "@/lib/domino/engine";
 import { FLAGS } from "@/lib/domino/themes";
+import { useI18n } from "@/lib/i18n";
 
 export const Route = createFileRoute("/")({
   ssr: false,
@@ -42,6 +45,7 @@ type Tournament = {
 };
 
 function Index() {
+  const { t } = useI18n();
   const { user } = useAuth();
   const { profile, progress } = useProfile(user?.id);
   const tier = tierOf(profile?.elo ?? 1000);
@@ -73,12 +77,20 @@ function Index() {
       <AppNav />
 
       <header className="mb-6">
-        <h1 className="font-display text-4xl font-extrabold">
-          <span className="gold-text">Domino</span>
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Dominó cubano · doble 6 y doble 9 · en pareja o 1 vs 1
-        </p>
+        <div className="flex items-center gap-3">
+          <h1 className="font-display text-4xl font-extrabold">
+            <span className="gold-text">Domino</span>
+          </h1>
+          <div className="flex items-center -rotate-6 transition-transform duration-200 hover:rotate-0 hover:scale-105">
+            <DominoTile
+              tile={{ a: 6, b: 6 }}
+              orientation="v"
+              size="sm"
+              className="shadow-tile ring-1 ring-gold/40"
+            />
+          </div>
+        </div>
+        <p className="mt-1 text-sm text-muted-foreground">{t("home.tagline")}</p>
       </header>
 
       {profile ? (
@@ -91,7 +103,9 @@ function Index() {
               </p>
             </div>
             <div className="shrink-0 text-right">
-              <p className="font-display text-2xl font-bold text-gold">Nv {progress.level}</p>
+              <p className="font-display text-2xl font-bold text-gold">
+                {t("home.level")} {progress.level}
+              </p>
               <p className="text-[11px] text-muted-foreground">
                 {progress.into}/{progress.need} XP
               </p>
@@ -106,41 +120,115 @@ function Index() {
         </section>
       ) : (
         <section className="glass-panel mb-5 rounded-2xl p-4">
-          <p className="text-sm text-muted-foreground">
-            Entra con tu cuenta para guardar tu nivel, ranking y amigos.
-          </p>
+          <p className="text-sm text-muted-foreground">{t("home.loginPrompt")}</p>
           <Link
             to="/auth"
             className="mt-3 inline-flex rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground"
           >
-            Iniciar sesión
+            {t("home.loginBtn")}
           </Link>
         </section>
       )}
 
-      <section className="grid gap-3 sm:grid-cols-2">
-        {VARIANTS.map((v) => (
+      {/* JUGAR CONTRA BOTS */}
+      <section className="mb-6">
+        <div className="mb-2 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-400" />
+            <h2 className="font-display text-lg font-bold">{t("home.playBots")}</h2>
+          </div>
+          <span className="rounded-full border border-border bg-card/60 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+            {t("home.noLogin")}
+          </span>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {VARIANTS.map((v) => (
+            <Link
+              key={v.id}
+              to="/jugar"
+              search={{ v: v.id }}
+              className="hover-lift glass-panel group rounded-2xl p-4 transition-colors hover:border-gold/50"
+            >
+              <div className="flex items-center justify-between">
+                <p className="font-display text-lg font-bold group-hover:text-gold">{v.label}</p>
+                <span className="text-xs text-gold">Jugar gratis →</span>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {v.variant.mode === "pairs" ? "4 jugadores, 2 parejas (Bots)" : "Mano a mano (Bot)"}{" "}
+                · a 100 puntos
+              </p>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {/* JUGAR ONLINE Y CON AMIGOS */}
+      <section className="mb-6 rounded-2xl border border-border/80 bg-card/40 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-base">🌐</span>
+              <h2 className="font-display text-lg font-bold">{t("home.onlineMatches")}</h2>
+            </div>
+            <p className="mt-0.5 text-xs text-muted-foreground">{t("home.requireAccount")}</p>
+          </div>
+          {!user ? (
+            <Link
+              to="/auth"
+              className="rounded-full bg-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground transition-transform hover:scale-105"
+            >
+              {t("home.loginBtn")}
+            </Link>
+          ) : (
+            <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-medium text-emerald-400">
+              Sesión activa
+            </span>
+          )}
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <Link
-            key={v.id}
-            to="/jugar"
-            search={{ v: v.id }}
-            className="hover-lift glass-panel rounded-2xl p-4"
+            to="/amigos"
+            className="rounded-xl border border-border/60 bg-card/60 p-3 transition-colors hover:border-gold/50 hover:bg-card"
           >
-            <p className="font-display text-lg font-bold">{v.label}</p>
-            <p className="text-xs text-muted-foreground">
-              {v.variant.mode === "pairs" ? "4 jugadores, 2 parejas" : "Mano a mano"} · a 100 puntos
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-bold">👥 {t("nav.friends")}</p>
+              {!user && (
+                <span className="text-[10px] text-muted-foreground">🔒 Obligatorio cuenta</span>
+              )}
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Busca rivales por nombre o ID e invítalos a tu mesa de dominó.
             </p>
           </Link>
-        ))}
+
+          <Link
+            to="/espectar"
+            className="rounded-xl border border-border/60 bg-card/60 p-3 transition-colors hover:border-gold/50 hover:bg-card"
+          >
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-bold">📡 {t("nav.live")}</p>
+              {!user && (
+                <span className="text-[10px] text-muted-foreground">🔒 Obligatorio cuenta</span>
+              )}
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Únete a mesas online multijugador o mira partidas en tiempo real.
+            </p>
+          </Link>
+        </div>
       </section>
 
       <section className="mt-5 grid gap-4 sm:grid-cols-2">
         {/* TOP 10 */}
         <div className="glass-panel rounded-2xl p-4">
-          <h2 className="font-display text-lg font-bold">🏆 Top 10</h2>
+          <h2 className="font-display text-lg font-bold">🏆 {t("home.topRanking")}</h2>
           <ol className="mt-2 divide-y divide-border">
             {top.map((r, i) => (
-              <li key={r.id} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 py-1.5">
+              <li
+                key={r.id}
+                className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 py-1.5"
+              >
                 <span className="w-5 text-center text-xs font-bold text-gold">{i + 1}</span>
                 <span className="min-w-0 truncate text-sm">
                   {FLAGS.find((f) => f.code === r.flag)?.emoji ?? "🇨🇺"} {r.username}
@@ -149,27 +237,35 @@ function Index() {
               </li>
             ))}
             {!top.length ? (
-              <li className="py-2 text-sm text-muted-foreground">Aún no hay jugadores clasificados.</li>
+              <li className="py-2 text-sm text-muted-foreground">
+                Aún no hay jugadores clasificados.
+              </li>
             ) : null}
           </ol>
-          <Link to="/ranking" className="mt-3 inline-block text-xs font-semibold text-gold hover:underline">
-            Ver ranking completo →
+          <Link
+            to="/ranking"
+            className="mt-3 inline-block text-xs font-semibold text-gold hover:underline"
+          >
+            {t("home.viewRanking")}
           </Link>
         </div>
 
         {/* TORNEOS */}
         <div className="glass-panel rounded-2xl p-4">
-          <h2 className="font-display text-lg font-bold">🏅 Torneos</h2>
+          <h2 className="font-display text-lg font-bold">🏅 {t("home.activeTournaments")}</h2>
           <div className="mt-2 divide-y divide-border">
-            {torneos.map((t) => (
-              <div key={t.id} className="py-2">
-                <p className="text-sm font-semibold">{t.name}</p>
+            {torneos.map((tItem) => (
+              <div key={tItem.id} className="py-2">
+                <p className="text-sm font-semibold">{tItem.name}</p>
                 <p className="text-xs text-muted-foreground">
-                  {t.mode === "pairs" ? "En pareja" : "Individual"} · llave de {t.max_players}
-                  {t.starts_at ? ` · ${new Date(t.starts_at).toLocaleDateString("es")}` : ""}
+                  {tItem.mode === "pairs" ? "En pareja" : "Individual"} · llave de{" "}
+                  {tItem.max_players}
+                  {tItem.starts_at
+                    ? ` · ${new Date(tItem.starts_at).toLocaleDateString("es")}`
+                    : ""}
                 </p>
-                {t.reward_description ? (
-                  <p className="mt-0.5 text-xs text-gold">Premio: {t.reward_description}</p>
+                {tItem.reward_description ? (
+                  <p className="mt-0.5 text-xs text-gold">Premio: {tItem.reward_description}</p>
                 ) : null}
               </div>
             ))}
@@ -177,11 +273,38 @@ function Index() {
               <p className="py-2 text-sm text-muted-foreground">Aún no hay torneos abiertos.</p>
             ) : null}
           </div>
-          <Link to="/torneos" className="mt-3 inline-block text-xs font-semibold text-gold hover:underline">
-            Ver torneos →
+          <Link
+            to="/torneos"
+            className="mt-3 inline-block text-xs font-semibold text-gold hover:underline"
+          >
+            {t("home.viewAllTournaments")}
           </Link>
         </div>
       </section>
+
+      {/* AYUDA Y GUÍA DE JUEGO */}
+      <section className="glass-panel mt-5 rounded-2xl p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xl">📖</span>
+              <h2 className="font-display text-lg font-bold">{t("home.helpTitle")}</h2>
+            </div>
+            <p className="mt-1 max-w-xl text-xs text-muted-foreground">{t("home.helpDesc")}</p>
+          </div>
+          <Link
+            to="/ayuda"
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full border border-gold/50 bg-gold/15 px-4 py-2 text-xs font-semibold text-gold transition-colors hover:bg-gold/25 self-start sm:self-auto"
+          >
+            {t("home.helpBtn")}
+          </Link>
+        </div>
+      </section>
+
+      {/* PIE DE PÁGINA VERSIÓN WEB */}
+      <div className="mt-8">
+        <WebFooter />
+      </div>
     </main>
   );
 }

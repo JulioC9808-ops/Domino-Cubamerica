@@ -189,5 +189,4 @@ export const FLAGS: Flag[] = [
   { code: "pa", emoji: "🇵🇦", label: "Panamá" },
 ];
 
-export const getFlag = (code?: string | null) =>
-  FLAGS.find((f) => f.code === code) ?? FLAGS[0]!;
+export const getFlag = (code?: string | null) => FLAGS.find((f) => f.code === code) ?? FLAGS[0]!;

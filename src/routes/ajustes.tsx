@@ -1,11 +1,22 @@
+import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppNav } from "@/components/AppNav";
+import { SoundToggle } from "@/components/SoundToggle";
 import { Flag } from "@/components/Flag";
+import { WebFooter } from "@/components/WebFooter";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
+import { usePlayCredits } from "@/hooks/usePlayCredits";
 import { supabase } from "@/integrations/supabase/client";
 import { getTheme } from "@/lib/domino/themes";
-import { unlocksFor, getSkin, FRAME_RING, isFlagUnlocked, detectCountry } from "@/lib/domino/levels";
+import {
+  unlocksFor,
+  getSkin,
+  FRAME_RING,
+  isFlagUnlocked,
+  detectCountry,
+} from "@/lib/domino/levels";
+import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/ajustes")({
@@ -28,16 +39,65 @@ export const Route = createFileRoute("/ajustes")({
 });
 
 function Ajustes() {
+  const { t } = useI18n();
   const { user } = useAuth();
   const { profile, update, progress } = useProfile(user?.id);
+  const { premium, planExpiresAt, freeSeconds } = usePlayCredits();
+
+  const [planName, setPlanName] = useState<string | null>(null);
+  const [pendingPurchase, setPendingPurchase] = useState<{
+    plan_id: string;
+    status: string;
+  } | null>(null);
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    void (async () => {
+      const { data: purchases } = await supabase
+        .from("purchases")
+        .select("plan_id, status, created_at")
+        .order("created_at", { ascending: false })
+        .limit(5);
+
+      if (purchases && purchases.length > 0) {
+        const pending = purchases.find((p) => p.status === "pending");
+        if (pending) {
+          setPendingPurchase(pending);
+        }
+        const approved = purchases.find((p) => p.status === "approved");
+        const activePurchase = approved || purchases[0];
+        if (activePurchase) {
+          const { data: planRow } = await supabase
+            .from("payment_plans")
+            .select("label")
+            .eq("id", activePurchase.plan_id)
+            .maybeSingle();
+          if (planRow?.label) {
+            setPlanName(planRow.label);
+          } else {
+            setPlanName(activePurchase.plan_id);
+          }
+        }
+      }
+    })();
+  }, [user?.id]);
 
   if (!user) {
     return (
       <main className="mx-auto w-full max-w-3xl px-4 py-6">
         <AppNav />
-        <p className="text-sm text-muted-foreground">Entra con tu cuenta para ver los ajustes.</p>
-        <Link to="/auth" className="mt-3 inline-flex rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground">
-          Iniciar sesión
+        <p className="text-sm text-muted-foreground">{t("settings.needLogin")}</p>
+        <Link
+          to="/auth"
+          className="mt-3 inline-flex rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground"
+        >
+          {t("home.loginBtn")}
         </Link>
       </main>
     );
@@ -46,16 +106,153 @@ function Ajustes() {
   const level = progress.level;
   const myCountry = detectCountry();
 
+  // Cálculo preciso del tiempo restante
+  const computeRemaining = () => {
+    if (!planExpiresAt) return null;
+    const diff = new Date(planExpiresAt).getTime() - now;
+    if (diff <= 0)
+      return { expired: true, text: t("settings.expired"), detailed: t("settings.expired") };
+
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+    let detailed = "";
+    if (days > 0) {
+      detailed = `${days} ${t("settings.days")}, ${hours} h, ${minutes} m`;
+    } else if (hours > 0) {
+      detailed = `${hours} ${t("settings.hours")}, ${minutes} m, ${seconds} s`;
+    } else {
+      detailed = `${minutes} min, ${seconds} s`;
+    }
+
+    const shortBadge =
+      days > 0 ? `${days}d ${hours}h ${minutes}m` : `${hours}h ${minutes}m ${seconds}s`;
+
+    return { expired: false, detailed, shortBadge };
+  };
+
+  const remainingInfo = computeRemaining();
+
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-6">
       <AppNav />
-      <h1 className="font-display text-3xl font-extrabold">Ajustes</h1>
+      <h1 className="font-display text-3xl font-extrabold">{t("settings.title")}</h1>
       <p className="mt-1 text-xs text-muted-foreground">
-        Nivel {level} · ID {profile?.player_code ?? "—"}
+        {t("home.level")} {level} · ID {profile?.player_code ?? "—"}
       </p>
 
-      <section className="glass-panel mt-5 grid gap-3 rounded-2xl p-4">
-        <label className="text-xs uppercase tracking-widest text-muted-foreground">Nombre</label>
+      {/* OPCIÓN: SUBSCRIPCIÓN */}
+      <section className="glass-panel mt-5 rounded-2xl border border-gold/40 p-4 sm:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gold/15 text-xl text-gold shadow-sm">
+              👑
+            </span>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="font-display text-lg font-bold">{t("settings.subscription")}</h2>
+                {premium ? (
+                  <span className="rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-[10px] font-bold text-emerald-400">
+                    ACTIVO
+                  </span>
+                ) : (
+                  <span className="rounded-full bg-amber-500/20 px-2.5 py-0.5 text-[10px] font-medium text-amber-300">
+                    GRATIS
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">{t("settings.subscriptionDesc")}</p>
+            </div>
+          </div>
+          <Link
+            to="/planes"
+            className="rounded-full border border-gold/50 bg-gold/15 px-4 py-1.5 text-xs font-semibold text-gold transition-colors hover:bg-gold/25"
+          >
+            {premium ? t("settings.managePlans") : t("settings.upgrade")} →
+          </Link>
+        </div>
+
+        <div className="mt-4 rounded-xl border border-border/70 bg-card/60 p-4">
+          {premium ? (
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-3">
+                <div className="flex items-center gap-2">
+                  <span className="relative flex h-3 w-3">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-500"></span>
+                  </span>
+                  <span className="font-display text-base font-bold text-foreground">
+                    {planName || t("settings.activePlan")}
+                  </span>
+                </div>
+                {remainingInfo && !remainingInfo.expired && (
+                  <div className="rounded-full bg-gold/10 px-3 py-1 text-xs font-bold text-gold ring-1 ring-gold/30">
+                    ⏱️ {remainingInfo.shortBadge}
+                  </div>
+                )}
+              </div>
+
+              <div className="grid gap-2 text-xs sm:grid-cols-2">
+                <div>
+                  <span className="text-muted-foreground">{t("settings.expiresOn")}:</span>{" "}
+                  <strong className="font-medium text-foreground">
+                    {planExpiresAt
+                      ? new Date(planExpiresAt).toLocaleDateString("es", {
+                          day: "2-digit",
+                          month: "long",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
+                      : "—"}
+                  </strong>
+                </div>
+                <div className="sm:text-right">
+                  <span className="text-muted-foreground">{t("settings.remaining")}:</span>{" "}
+                  <strong className="font-bold text-gold">{remainingInfo?.detailed ?? "—"}</strong>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300">
+                ✓ {t("settings.unlimitedPlay")}
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex h-2.5 w-2.5 rounded-full bg-amber-400"></span>
+                  <span className="font-display text-sm font-bold text-foreground">
+                    {t("settings.freePlan")}
+                  </span>
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  {t("settings.remaining")}:{" "}
+                  <strong className="font-semibold text-foreground">
+                    {Math.max(0, Math.floor(freeSeconds / 60))} {t("settings.minutes")}
+                  </strong>
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">{t("settings.freePlanDesc")}</p>
+              {pendingPurchase ? (
+                <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-300">
+                  ⏳ <strong>{t("settings.pendingApproval")}:</strong> Registraste un pago por{" "}
+                  <span className="font-semibold text-white">{pendingPurchase.plan_id}</span>. Se
+                  activará en cuanto el administrador apruebe la transferencia.
+                </div>
+              ) : null}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* NOMBRE */}
+      <section className="glass-panel mt-4 grid gap-2 rounded-2xl p-4">
+        <label className="text-xs uppercase tracking-widest text-muted-foreground">
+          {t("settings.name")}
+        </label>
         <input
           defaultValue={profile?.username ?? ""}
           onBlur={(e) => void update({ username: e.target.value.trim().slice(0, 24) })}
@@ -63,8 +260,17 @@ function Ajustes() {
         />
       </section>
 
+      {/* EFECTOS DE SONIDO */}
+      <section className="glass-panel mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl p-4">
+        <div>
+          <h2 className="font-display text-base font-bold">{t("settings.sound")}</h2>
+          <p className="text-xs text-muted-foreground">{t("settings.soundDesc")}</p>
+        </div>
+        <SoundToggle showLabel id="settings-sound-toggle" />
+      </section>
+
       <Unlock
-        title="Tema de mesa"
+        title={t("settings.tableTheme")}
         kind="theme"
         level={level}
         current={profile?.table_theme ?? "madera"}
@@ -78,7 +284,7 @@ function Ajustes() {
       />
 
       <Unlock
-        title="Diseño de fichas"
+        title={t("settings.tileDesign")}
         kind="skin"
         level={level}
         current={profile?.tile_skin ?? "hueso"}
@@ -92,7 +298,7 @@ function Ajustes() {
       />
 
       <Unlock
-        title="Bandera de la mesa"
+        title={t("settings.flag")}
         kind="flag"
         level={level}
         current={profile?.flag ?? "cu"}
@@ -102,7 +308,7 @@ function Ajustes() {
       />
 
       <Unlock
-        title="Marco de avatar"
+        title={t("settings.avatarFrame")}
         kind="frame"
         level={level}
         current={profile?.frame ?? "none"}
@@ -113,19 +319,25 @@ function Ajustes() {
       />
 
       <Unlock
-        title="Título"
+        title={t("settings.userTitle")}
         kind="title"
         level={level}
         current={profile?.title ?? "novato"}
         onPick={(id) => void update({ title: id })}
       />
 
-      <button
-        onClick={() => void supabase.auth.signOut()}
-        className="mt-6 rounded-full border border-border px-5 py-2 text-sm font-semibold text-destructive"
-      >
-        Cerrar sesión
-      </button>
+      <div className="mt-6 flex items-center justify-between">
+        <button
+          onClick={() => void supabase.auth.signOut()}
+          className="rounded-full border border-border px-5 py-2 text-sm font-semibold text-destructive transition-colors hover:bg-destructive/10"
+        >
+          {t("settings.logout")}
+        </button>
+      </div>
+
+      <div className="mt-8">
+        <WebFooter id="settings-web-footer" />
+      </div>
     </main>
   );
 }

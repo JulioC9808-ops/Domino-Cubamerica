@@ -8,7 +8,8 @@ export const Route = createFileRoute("/ayuda")({
       { title: "Ayuda y guías | Domino" },
       {
         name: "description",
-        content: "Cómo jugar dominó cubano: reglas del doble 6 y doble 9, guía de la app, niveles y preguntas frecuentes.",
+        content:
+          "Cómo jugar dominó cubano: reglas del doble 6 y doble 9, guía de la app, niveles y preguntas frecuentes.",
       },
     ],
   }),
@@ -32,38 +33,36 @@ function Ayuda() {
     <main className="mx-auto w-full max-w-3xl px-4 py-6">
       <AppNav />
       <h1 className="font-display text-3xl font-extrabold">Ayuda</h1>
-      <p className="mt-1 text-xs text-muted-foreground">
-        Reglas, guías e información del juego.
-      </p>
+      <p className="mt-1 text-xs text-muted-foreground">Reglas, guías e información del juego.</p>
 
       <div className="mt-4 space-y-3">
         <Section title="🎲 Cómo jugar dominó cubano">
           <p>
-            Se juega <strong className="text-foreground">en pareja (2 vs 2)</strong> con
-            doble 6 o doble 9. Cada jugador recibe fichas y el que trae el doble más alto
-            (o el mayor en mano a mano) <strong className="text-foreground">sale</strong>.
+            Se juega <strong className="text-foreground">en pareja (2 vs 2)</strong> con doble 6 o
+            doble 9. Cada jugador recibe fichas y el que trae el doble más alto (o el mayor en mano
+            a mano) <strong className="text-foreground">sale</strong>.
           </p>
           <p>
-            En tu turno, arrastra una ficha a cualquiera de las dos puntas del tablero si
-            uno de sus números coincide. Si no puedes jugar, <em>pasas el turno</em>.
+            En tu turno, arrastra una ficha a cualquiera de las dos puntas del tablero si uno de sus
+            números coincide. Si no puedes jugar, <em>pasas el turno</em>.
           </p>
           <p>
-            <strong className="text-foreground">Capicúa</strong>: ganar la mano colocando
-            tu última ficha por ambos lados. <strong className="text-foreground">Tranca</strong>:
-            nadie puede jugar y gana quien menos puntos tenga en la mano.
+            <strong className="text-foreground">Capicúa</strong>: ganar la mano colocando tu última
+            ficha por ambos lados. <strong className="text-foreground">Tranca</strong>: nadie puede
+            jugar y gana quien menos puntos tenga en la mano.
           </p>
           <p>
-            La partida va a <strong className="text-foreground">100 puntos</strong>: los
-            puntos de las fichas que les quedaron en la mano a los perdedores suman a la
-            pareja ganadora (el de la pareja que tranca suma también el de su compañero).
+            La partida va a <strong className="text-foreground">100 puntos</strong>: los puntos de
+            las fichas que les quedaron en la mano a los perdedores suman a la pareja ganadora (el
+            de la pareja que tranca suma también el de su compañero).
           </p>
         </Section>
 
         <Section title="🕹️ Guía rápida de la app">
           <p>
-            <strong className="text-foreground">Jugar</strong>: elige doble 6 o doble 9,
-            en pareja o mano a mano. Toca una ficha para colocarla, o arrástrala a la punta
-            del tablero que quieras (se ilumina en dorado).
+            <strong className="text-foreground">Jugar</strong>: elige doble 6 o doble 9, en pareja o
+            mano a mano. Toca una ficha para colocarla, o arrástrala a la punta del tablero que
+            quieras (se ilumina en dorado).
           </p>
           <p>
             Usa el <strong className="text-foreground">chat rápido</strong> con emojis para
@@ -73,12 +72,12 @@ function Ayuda() {
 
         <Section title="⭐ Niveles, rangos y recompensas">
           <p>
-            Ganas XP al terminar cada partida (más si ganas y con margen). Al subir de
-            nivel desbloqueas temas de mesa, diseños de fichas, banderas, marcos y títulos.
+            Ganas XP al terminar cada partida (más si ganas y con margen). Al subir de nivel
+            desbloqueas temas de mesa, diseños de fichas, banderas, marcos y títulos.
           </p>
           <p>
-            El <strong className="text-foreground">ranking</strong> usa puntos estilo Elo:
-            vencer a rivales de rango alto sube más. Consulta{" "}
+            El <strong className="text-foreground">ranking</strong> usa puntos estilo Elo: vencer a
+            rivales de rango alto sube más. Consulta{" "}
             <Link to="/ranking" className="text-gold underline">
               el ranking
             </Link>
@@ -88,13 +87,15 @@ function Ayuda() {
 
         <Section title="🆓 Cuenta gratuita y planes">
           <p>
-            Gratis juegas <strong className="text-foreground">30 minutos cada 48 horas</strong>{" "}
-            (lo cuenta el servidor, no tu teléfono). Puedes subir de nivel siempre, pero las
-            recompensas y los torneos requieren un plan.
+            <strong className="text-foreground">
+              Jugar contra Bots es 100% libre y sin límite de tiempo
+            </strong>
+            . Puedes practicar todas las manos que desees totalmente gratis.
           </p>
           <p>
-            Si el tiempo se acaba en medio de una partida, puedes terminarla, pero no
-            empezar otra hasta tener plan o que te llegue el próximo tiempo gratis.
+            Para salas multijugador y torneos, la cuenta básica incluye tiempo gratuito de
+            bienvenida y existen planes para acceso ilimitado, salas privadas y torneos
+            competitivos.
           </p>
           <p>
             <Link to="/planes" className="text-gold underline">
@@ -105,8 +106,8 @@ function Ayuda() {
 
         <Section title="🏆 Torneos">
           <p>
-            Llave de 32 jugadores en grupos de 4: avanza el ganador de cada mesa (o pareja
-            ganadora) hasta la final. Solo para cuentas con plan.
+            Llave de 32 jugadores en grupos de 4: avanza el ganador de cada mesa (o pareja ganadora)
+            hasta la final. Solo para cuentas con plan.
           </p>
           <p>
             <Link to="/torneos" className="text-gold underline">
@@ -117,17 +118,20 @@ function Ayuda() {
 
         <Section title="❓ Preguntas frecuentes">
           <p>
-            <strong className="text-foreground">¿Puedo cambiar mi bandera?</strong> Sí: la de
-            tu país siempre está libre desde el nivel 1; las demás se desbloquean con nivel + plan.
+            <strong className="text-foreground">¿Puedo cambiar mi bandera?</strong> Sí: la de tu
+            país siempre está libre desde el nivel 1; las demás se desbloquean con nivel + plan.
           </p>
           <p>
-            <strong className="text-foreground">¿Se acumula mi tiempo gratis?</strong> No:
-            cada 48 horas vuelves a tener 30 minutos frescos.
+            <strong className="text-foreground">¿Se acumula mi tiempo gratis?</strong> No: cada 48
+            horas vuelves a tener 30 minutos frescos.
           </p>
           <p>
             <strong className="text-foreground">¿Cuándo se activa mi compra?</strong> El
-            administrador la aprueba manualmente (normalmente en minutos). Verás el estado
-            en <Link to="/planes" className="text-gold underline">Planes</Link>.
+            administrador la aprueba manualmente (normalmente en minutos). Verás el estado en{" "}
+            <Link to="/planes" className="text-gold underline">
+              Planes
+            </Link>
+            .
           </p>
         </Section>
       </div>

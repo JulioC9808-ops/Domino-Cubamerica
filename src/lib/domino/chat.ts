@@ -70,9 +70,7 @@ export const EMOJI_PACKS: Record<string, string[]> = {
 };
 
 export const emojisForLevel = (level: number, unlocked: { id: string; level: number }[]) =>
-  unlocked
-    .filter((u) => level >= u.level)
-    .flatMap((u) => EMOJI_PACKS[u.id] ?? []);
+  unlocked.filter((u) => level >= u.level).flatMap((u) => EMOJI_PACKS[u.id] ?? []);
 
 export type ChatBubble = {
   id: string;

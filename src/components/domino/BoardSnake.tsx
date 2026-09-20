@@ -1,36 +1,36 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { DominoTile } from "./DominoTile";
-import { type BoardTile, type Side, type Tile, teamOfSeat } from "@/lib/domino/engine";
+import { type BoardTile, type Side, type Tile } from "@/lib/domino/engine";
 
 /**
- * Tablero serpiente:
- * - La cadena nace en el CENTRO y crece en horizontal hacia ambos extremos.
- * - Los dobles van PERPENDICULARES a la línea de juego.
- * - Al llegar al borde, la rama dobla con una ficha perpendicular y sigue en
- *   una fila nueva en zigzag: la derecha baja y la izquierda sube (en espejo).
- * - Entre filas hay una separación fija (ROW_GAP): las fichas NUNCA se
- *   superponen, ni al doblar hacia arriba ni hacia abajo.
- * - El jugador solo elige la punta (izq/der); el reparto de filas es automático.
+ * Tablero estilo dominó cubano/internacional (diseño alineado a Ludoteka):
+ * - La ficha inicial se ubica exactamente en el CENTRO del tablero.
+ * - Dobles: perpendiculares a la línea de juego.
+ * - Fichas normales: horizontales a lo largo de cada fila.
+ * - Serpiente simétrica:
+ *   - Rama derecha (R): avanza al Este por la fila central (Y=0). Al alcanzar el
+ *     límite, dobla hacia ARRIBA (Norte) a la fila -1 y regresa hacia el Oeste.
+ *   - Rama izquierda (L): avanza al Oeste por la fila central (Y=0). Al alcanzar el
+ *     límite, dobla hacia ABAJO (Sur) a la fila +1 y regresa hacia el Este.
+ * - Las filas paralelas mantienen una separación limpia y constante sin colisiones.
+ * - Las fichas son 100% sólidas y opacas, con remache central de latón.
  */
-const U = 26; // media ficha (ficha sm = 52×26)
-const ROW_GAP = 12; // separación visible entre filas (súbela a 16 si la quieres más aire)
-const ROW_STEP = 2 * U + ROW_GAP; // distancia entre líneas centrales de filas
-const LONG = 52;
+const U = 26; // Media ficha (ficha sm = 52×26 px)
+const LONG = 52; // Longitud de ficha
+const ROW_PITCH = 52; // Separación exacta entre centros de filas para doblar con ficha vertical
 
 type Dir = "E" | "W";
 type Branch = "L" | "R";
 
 type Placed = {
   bt: BoardTile;
-  /** px relativos al centro */
   left: number;
   top: number;
   vertical: boolean;
-  /** vertical: true = el valor que conecta va ABAJO (rama izquierda) */
-  reversedV: boolean;
-  /** horizontal: true = el valor que conecta va a la DERECHA */
-  reversed: boolean;
+  shown: Tile;
+  isOpenEnd?: boolean;
+  side?: Side;
 };
 
 function growBranch(
@@ -38,66 +38,102 @@ function growBranch(
   board: BoardTile[],
   indices: number[],
   initCx: number,
-  maxX: number,
-  minX: number,
+  maxArm: number,
   placed: Placed[],
 ) {
   let cx = initCx;
-  let cy = 0;
+  let row = 0;
   let dir: Dir = branch === "R" ? "E" : "W";
-  const going = branch === "R" ? 1 : -1; // derecha baja, izquierda sube
+  // R dobla hacia arriba (-1), L dobla hacia abajo (+1)
+  const step = branch === "R" ? -1 : 1;
 
-  for (const i of indices) {
+  for (let idx = 0; idx < indices.length; idx++) {
+    const i = indices[idx]!;
     const bt = board[i]!;
     const isDouble = bt.tile.a === bt.tile.b;
+    const isLastInBranch = idx === indices.length - 1;
+    const centerY = row * ROW_PITCH;
 
+    // Regla crucial: un doble NUNCA dobla la esquina; continúa recto en la fila actual,
+    // colocado perpendicular a la dirección de avance de la fila.
     if (isDouble) {
-      // doble perpendicular a la línea de juego
       const px = dir === "E" ? cx : cx - U;
       placed.push({
         bt,
         left: px,
-        top: cy - U,
+        top: centerY - U,
         vertical: true,
-        reversedV: branch === "L",
-        reversed: false,
+        shown: { a: bt.tile.a, b: bt.tile.b },
+        isOpenEnd: isLastInBranch,
+        side: branch === "R" ? "right" : "left",
       });
       cx = dir === "E" ? cx + U : cx - U;
       continue;
     }
 
-    const fits = dir === "E" ? cx + 2 * U <= maxX : cx - 2 * U >= minX;
-    if (fits) {
-      const px = dir === "E" ? cx : cx - 2 * U;
+    // Para fichas no dobles: verificar si cabe en la dirección actual antes de virar
+    const willExceed = dir === "E" ? cx + LONG > maxArm : cx - LONG < -maxArm;
+
+    if (!willExceed) {
+      // Ficha horizontal normal en la fila actual
+      const px = dir === "E" ? cx : cx - LONG;
+      const shown: Tile =
+        branch === "R"
+          ? dir === "E"
+            ? { a: bt.left, b: bt.right }
+            : { a: bt.right, b: bt.left }
+          : dir === "W"
+            ? { a: bt.left, b: bt.right }
+            : { a: bt.right, b: bt.left };
+
       placed.push({
         bt,
         left: px,
-        top: cy - U / 2,
+        top: centerY - U / 2,
         vertical: false,
-        reversedV: false,
-        reversed: dir === "W", // el valor que conecta mira hacia la cadena (centro)
+        shown,
+        isOpenEnd: isLastInBranch,
+        side: branch === "R" ? "right" : "left",
       });
-      cx = dir === "E" ? cx + 2 * U : cx - 2 * U;
+      cx = dir === "E" ? cx + LONG : cx - LONG;
     } else {
-      // esquina: ficha perpendicular que dobla a la fila siguiente (zigzag)
-      const px = Math.max(minX, Math.min(maxX - U, dir === "E" ? cx : cx - U));
+      // ¡DOBLA LA ESQUINA! Ficha que NO es doble vira verticalmente:
+      // - Si dobla hacia abajo (step === +1): borde superior alinea con el borde de la fila actual (-U/2)
+      // - Si dobla hacia arriba (step === -1): borde inferior alinea con el borde de la fila actual (+U/2 - LONG)
+      const nextRow = row + step;
+      const turnTop = step === 1 ? centerY - U / 2 : centerY + U / 2 - LONG;
+      const px = dir === "E" ? cx : cx - U;
+
+      const shown: Tile =
+        branch === "R"
+          ? step === -1
+            ? { a: bt.right, b: bt.left }
+            : { a: bt.left, b: bt.right }
+          : step === 1
+            ? { a: bt.right, b: bt.left }
+            : { a: bt.left, b: bt.right };
+
       placed.push({
         bt,
         left: px,
-        top: cy - U,
+        top: turnTop,
         vertical: true,
-        reversedV: branch === "L",
-        reversed: false,
+        shown,
+        isOpenEnd: isLastInBranch,
+        side: branch === "R" ? "right" : "left",
       });
+
+      // Nueva fila y sentido invertido para continuar la serpiente
+      row = nextRow;
       dir = dir === "E" ? "W" : "E";
-      cy += going * ROW_STEP;
+      cx = dir === "W" ? px : px + U;
     }
   }
 }
 
 export function BoardSnake({
   board,
-  players,
+  players: _players,
   startKey,
   emptyMessage,
   leftEnabled,
@@ -115,108 +151,186 @@ export function BoardSnake({
   onDropSide: (side: Side) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState(0);
+  const [containerWidth, setContainerWidth] = useState(0);
+  const initialKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
     const ro = new ResizeObserver(([entry]) => {
-      if (entry) setWidth(entry.contentRect.width);
+      if (entry) setContainerWidth(entry.contentRect.width);
     });
     ro.observe(el);
-    setWidth(el.clientWidth);
+    setContainerWidth(el.clientWidth);
     return () => ro.disconnect();
   }, []);
 
-  const cols = useMemo(() => {
-    const usable = Math.max(6 * U, width - 104); // margen para las zonas de drop
-    return Math.max(6, Math.floor(usable / U));
-  }, [width]);
+  // Mantener la clave de la ficha que abrió la mano para estabilidad del centro
+  useEffect(() => {
+    if (board.length === 0) {
+      initialKeyRef.current = null;
+    } else if (board.length === 1 && board[0]) {
+      initialKeyRef.current = board[0].key;
+    }
+  }, [board]);
 
   const layout = useMemo(() => {
     const empty = { placed: [] as Placed[], w: 0, h: 0, offX: 0, offY: 0 };
     if (board.length === 0) return empty;
 
-    const half = Math.floor(cols / 2) * U;
-    const minX = -half;
-    const maxX = half;
+    // Calcular límite de brazo horizontal antes de doblar:
+    // Permite que la hilera avance con holgura por la mesa (6 a 7 fichas) antes de virar
+    const usableWidth = Math.max(300, containerWidth || 700);
+    const maxArm = Math.min(360, Math.max(160, Math.floor(usableWidth / 2) - 60));
 
-    let startIdx = startKey ? board.findIndex((b) => b.key === startKey) : 0;
-    if (startIdx < 0) startIdx = 0;
-    const first = board[startIdx]!;
-    const firstDouble = first.tile.a === first.tile.b;
-
-    const placed: Placed[] = [];
-    // primera ficha centrada: doble en perpendicular, normal tumbada
-    if (firstDouble) {
-      placed.push({ bt: first, left: -U / 2, top: -U, vertical: true, reversedV: false, reversed: false });
-    } else {
-      placed.push({ bt: first, left: -U, top: -U / 2, vertical: false, reversedV: false, reversed: false });
+    // Identificar la ficha que abrió la mano
+    let startIdx = -1;
+    if (startKey) {
+      startIdx = board.findIndex((b) => b.key === startKey);
+    }
+    if (startIdx < 0 && initialKeyRef.current) {
+      startIdx = board.findIndex((b) => b.key === initialKeyRef.current);
+    }
+    if (startIdx < 0) {
+      startIdx = 0;
     }
 
+    const first = board[startIdx]!;
+    const firstDouble = first.tile.a === first.tile.b;
+    const placed: Placed[] = [];
+
+    // Ficha inicial centrada en el origen (0, 0)
+    if (firstDouble) {
+      placed.push({
+        bt: first,
+        left: -U / 2,
+        top: -U,
+        vertical: true,
+        shown: { a: first.tile.a, b: first.tile.b },
+        isOpenEnd: board.length === 1,
+        side: "left",
+      });
+    } else {
+      placed.push({
+        bt: first,
+        left: -U,
+        top: -U / 2,
+        vertical: false,
+        shown: { a: first.left, b: first.right },
+        isOpenEnd: board.length === 1,
+        side: "left",
+      });
+    }
+
+    // Índices de cada rama a partir de la ficha inicial
     const idxR: number[] = [];
     for (let i = startIdx + 1; i < board.length; i++) idxR.push(i);
+
     const idxL: number[] = [];
     for (let i = startIdx - 1; i >= 0; i--) idxL.push(i);
 
-    growBranch("R", board, idxR, firstDouble ? U / 2 : U, maxX, minX, placed);
-    growBranch("L", board, idxL, firstDouble ? -U / 2 : -U, maxX, minX, placed);
+    const startRx = firstDouble ? U / 2 : U;
+    const startLx = firstDouble ? -U / 2 : -U;
 
-    let minTop = Infinity;
-    let maxBottom = -Infinity;
+    growBranch("R", board, idxR, startRx, maxArm, placed);
+    growBranch("L", board, idxL, startLx, maxArm, placed);
+
+    // Calcular límites para centrado simétrico absoluto
+    let minX = 0;
+    let maxX = 0;
+    let minY = 0;
+    let maxY = 0;
+
     for (const p of placed) {
-      const h = p.vertical ? 2 * U : U;
-      minTop = Math.min(minTop, p.top);
-      maxBottom = Math.max(maxBottom, p.top + h);
+      const w = p.vertical ? U : LONG;
+      const h = p.vertical ? LONG : U;
+      minX = Math.min(minX, p.left);
+      maxX = Math.max(maxX, p.left + w);
+      minY = Math.min(minY, p.top);
+      maxY = Math.max(maxY, p.top + h);
     }
+
+    // Lienzo simétrico respecto al (0, 0) para que la ficha inicial esté en el medio exacto
+    const pad = 24;
+    const halfW = Math.max(Math.abs(minX), Math.abs(maxX), U * 2) + pad;
+    const halfH = Math.max(Math.abs(minY), Math.abs(maxY), U * 2) + pad;
 
     return {
       placed,
-      w: 2 * half,
-      h: Math.max(1, maxBottom - minTop),
-      offX: half,
-      offY: -minTop,
+      w: halfW * 2,
+      h: halfH * 2,
+      offX: halfW,
+      offY: halfH,
     };
-  }, [board, cols, startKey]);
+  }, [board, containerWidth, startKey]);
 
   return (
-    <div ref={ref} className="relative min-h-[26vh] w-full px-12 py-3">
-      {showZones ? (
-        <>
-          <SideZone side="left" enabled={leftEnabled} onDrop={() => onDropSide("left")} />
-          <SideZone side="right" enabled={rightEnabled} onDrop={() => onDropSide("right")} />
-        </>
-      ) : null}
+    <div
+      ref={ref}
+      className="relative flex min-h-[30vh] w-full items-center justify-center p-2 sm:min-h-[36vh]"
+      onClick={(e) => {
+        if (!showZones) return;
+        // Si el usuario clica en el fondo del tablero teniendo una ficha seleccionada
+        const rect = ref.current?.getBoundingClientRect();
+        if (!rect) return;
+        const clickX = e.clientX;
+        const centerX = rect.left + rect.width / 2;
+        if (clickX < centerX) {
+          if (leftEnabled) onDropSide("left");
+          else if (rightEnabled) onDropSide("right");
+        } else {
+          if (rightEnabled) onDropSide("right");
+          else if (leftEnabled) onDropSide("left");
+        }
+      }}
+    >
       {board.length === 0 ? (
-        <p className="px-4 py-10 text-center text-sm text-white/55">{emptyMessage}</p>
+        <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-white/10 bg-black/20 px-6 py-8 text-center backdrop-blur-xs">
+          <p className="text-sm font-medium text-white/70">{emptyMessage}</p>
+        </div>
       ) : (
-        <div className="no-scrollbar max-h-[42vh] overflow-y-auto">
+        <div className="no-scrollbar flex max-h-[48vh] max-w-full items-center justify-center overflow-auto p-2">
           <div
-            className="relative mx-auto"
-            style={{ width: Math.max(LONG, layout.w), height: Math.max(LONG, layout.h) }}
+            className="relative transition-all duration-300"
+            style={{
+              width: layout.w,
+              height: layout.h,
+              minWidth: layout.w,
+              minHeight: layout.h,
+            }}
           >
             {layout.placed.map((p, i) => {
-              const t = p.bt;
-              const shown: Tile = p.vertical
-                ? p.reversedV
-                  ? ({ a: t.right, b: t.left } as Tile)
-                  : ({ a: t.left, b: t.right } as Tile)
-                : p.reversed
-                  ? ({ a: t.right, b: t.left } as Tile)
-                  : ({ a: t.left, b: t.right } as Tile);
+              const isPlayableEnd =
+                showZones &&
+                p.isOpenEnd &&
+                ((p.side === "left" && leftEnabled) || (p.side === "right" && rightEnabled));
+
               return (
                 <div
-                  key={`${t.key}-${i}`}
-                  className="animate-tile-drop absolute"
+                  key={`${p.bt.key}-${i}`}
+                  data-drop-side={p.isOpenEnd ? p.side : undefined}
+                  className={cn(
+                    "animate-tile-drop absolute transition-transform",
+                    isPlayableEnd && "z-20 scale-105",
+                  )}
                   style={{ left: p.left + layout.offX, top: p.top + layout.offY }}
                 >
                   <DominoTile
-                    tile={shown}
+                    tile={p.shown}
                     orientation={p.vertical ? "v" : "h"}
                     size="sm"
                     className={cn(
-                      teamOfSeat(t.playedBy, players) === 0 ? "ring-team-a/40" : "ring-team-b/40",
+                      isPlayableEnd &&
+                        "cursor-pointer ring-2 ring-gold shadow-[0_0_12px_rgba(255,215,0,0.6)]",
                     )}
+                    onClick={
+                      isPlayableEnd
+                        ? (e) => {
+                            e.stopPropagation();
+                            onDropSide(p.side === "left" ? "left" : "right");
+                          }
+                        : undefined
+                    }
                   />
                 </div>
               );
@@ -225,43 +339,5 @@ export function BoardSnake({
         </div>
       )}
     </div>
-  );
-}
-
-function SideZone({
-  side,
-  enabled,
-  onDrop,
-}: {
-  side: Side;
-  enabled: boolean;
-  onDrop: () => void;
-}) {
-  const [over, setOver] = useState(false);
-  return (
-    <button
-      onClick={() => enabled && onDrop()}
-      onDragOver={(e) => {
-        if (!enabled) return;
-        e.preventDefault();
-        setOver(true);
-      }}
-      onDragLeave={() => setOver(false)}
-      onDrop={(e) => {
-        e.preventDefault();
-        setOver(false);
-        if (enabled) onDrop();
-      }}
-      className={cn(
-        "absolute inset-y-2 z-20 flex w-10 flex-col items-center justify-center gap-1 rounded-2xl border-2 border-dashed text-[10px] font-bold uppercase tracking-wider transition-all",
-        side === "left" ? "left-1" : "right-1",
-        enabled ? "border-gold/70 text-gold" : "cursor-not-allowed border-white/15 text-white/25",
-        over && enabled && "scale-105 border-gold bg-gold/15",
-      )}
-      aria-label={side === "left" ? "Jugar por la izquierda" : "Jugar por la derecha"}
-    >
-      <span className="text-lg leading-none">{side === "left" ? "◀" : "▶"}</span>
-      {side === "left" ? "Izq" : "Der"}
-    </button>
   );
 }

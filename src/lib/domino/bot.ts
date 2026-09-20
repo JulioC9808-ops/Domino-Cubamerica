@@ -49,7 +49,8 @@ export function chooseBotMove(state: GameState, seat: number): BotMove {
 
   for (const opt of options) {
     const { tile, side } = opt;
-    const end = state.board.length === 0 ? null : side === "left" ? state.leftEnd! : state.rightEnd!;
+    const end =
+      state.board.length === 0 ? null : side === "left" ? state.leftEnd! : state.rightEnd!;
     const outer = end === null ? tile.b : tile.a === end ? tile.b : tile.a;
 
     let score = 0;

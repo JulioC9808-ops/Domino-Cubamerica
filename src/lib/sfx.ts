@@ -20,13 +20,18 @@ export function isMuted() {
 
 export function setMuted(value: boolean) {
   muted = value;
-  if (typeof window !== "undefined") window.localStorage.setItem(KEY, value ? "1" : "0");
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem(KEY, value ? "1" : "0");
+    window.dispatchEvent(new CustomEvent("domino:sfx-changed", { detail: { muted: value } }));
+  }
 }
 
 function audio(): AudioContext | null {
   if (typeof window === "undefined") return null;
   if (!ctx) {
-    const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    const Ctor =
+      window.AudioContext ??
+      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!Ctor) return null;
     ctx = new Ctor();
   }
