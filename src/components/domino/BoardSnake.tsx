@@ -18,7 +18,7 @@ import { type BoardTile, type Side, type Tile } from "@/lib/domino/engine";
  */
 const U = 26; // Media ficha (ficha sm = 52×26 px)
 const LONG = 52; // Longitud de ficha
-const ROW_PITCH = 52; // Separación exacta entre centros de filas para doblar con ficha vertical
+const ROW_PITCH = 52; // Separación matemática exacta entre filas para evitar cualquier solapamiento
 
 type Dir = "E" | "W";
 type Branch = "L" | "R";
@@ -44,7 +44,7 @@ function growBranch(
   let cx = initCx;
   let row = 0;
   let dir: Dir = branch === "R" ? "E" : "W";
-  // R dobla hacia arriba (-1), L dobla hacia abajo (+1)
+  // Rama R (derecha) dobla hacia arriba (-1); Rama L (izquierda) dobla hacia abajo (+1)
   const step = branch === "R" ? -1 : 1;
 
   for (let idx = 0; idx < indices.length; idx++) {
@@ -54,14 +54,20 @@ function growBranch(
     const isLastInBranch = idx === indices.length - 1;
     const centerY = row * ROW_PITCH;
 
-    // Regla crucial: un doble NUNCA dobla la esquina; continúa recto en la fila actual,
-    // colocado perpendicular a la dirección de avance de la fila.
+    // Regla 1: Un doble en fila horizontal siempre va perpendicular (vertical)
     if (isDouble) {
       const px = dir === "E" ? cx : cx - U;
+      const doubleTop =
+        row === 0
+          ? centerY - U
+          : row > 0
+            ? centerY - U / 2 // se extiende hacia afuera (abajo) para no chocar con la fila central
+            : centerY - 3 * (U / 2); // se extiende hacia afuera (arriba) para no chocar con la fila central
+
       placed.push({
         bt,
         left: px,
-        top: centerY - U,
+        top: doubleTop,
         vertical: true,
         shown: { a: bt.tile.a, b: bt.tile.b },
         isOpenEnd: isLastInBranch,
@@ -71,7 +77,7 @@ function growBranch(
       continue;
     }
 
-    // Para fichas no dobles: verificar si cabe en la dirección actual antes de virar
+    // Regla 2: Verificar si la ficha horizontal cabe sin sobrepasar el brazo máximo
     const willExceed = dir === "E" ? cx + LONG > maxArm : cx - LONG < -maxArm;
 
     if (!willExceed) {
@@ -97,21 +103,15 @@ function growBranch(
       });
       cx = dir === "E" ? cx + LONG : cx - LONG;
     } else {
-      // ¡DOBLA LA ESQUINA! Ficha que NO es doble vira verticalmente:
-      // - Si dobla hacia abajo (step === +1): borde superior alinea con el borde de la fila actual (-U/2)
-      // - Si dobla hacia arriba (step === -1): borde inferior alinea con el borde de la fila actual (+U/2 - LONG)
+      // Regla 3: ¡GIRO LIMPIO A LA SIGUIENTE FILA!
+      // Ficha vertical de giro que conecta la fila actual con la siguiente sin solapamientos
       const nextRow = row + step;
-      const turnTop = step === 1 ? centerY - U / 2 : centerY + U / 2 - LONG;
       const px = dir === "E" ? cx : cx - U;
 
-      const shown: Tile =
-        branch === "R"
-          ? step === -1
-            ? { a: bt.right, b: bt.left }
-            : { a: bt.left, b: bt.right }
-          : step === 1
-            ? { a: bt.right, b: bt.left }
-            : { a: bt.left, b: bt.right };
+      // Si sube (step === -1): top = centerY - ROW_PITCH - U / 2 (-39px desde row 0), cubriendo [-39, +13]
+      // Si baja (step === +1): top = centerY - U / 2 (-13px desde row 0), cubriendo [-13, +39]
+      const turnTop = step === -1 ? centerY - ROW_PITCH - U / 2 : centerY - U / 2;
+      const shown: Tile = { a: bt.right, b: bt.left };
 
       placed.push({
         bt,
@@ -123,7 +123,7 @@ function growBranch(
         side: branch === "R" ? "right" : "left",
       });
 
-      // Nueva fila y sentido invertido para continuar la serpiente
+      // Pasar a la siguiente fila e invertir sentido
       row = nextRow;
       dir = dir === "E" ? "W" : "E";
       cx = dir === "W" ? px : px + U;

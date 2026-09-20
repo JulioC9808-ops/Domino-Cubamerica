@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { Plus, Users } from "lucide-react";
 import { AppNav } from "@/components/AppNav";
 import { SoundToggle } from "@/components/SoundToggle";
 import { GameTable, type SeatInfo } from "@/components/domino/GameTable";
+import { CreateRoomModal } from "@/components/domino/CreateRoomModal";
 import { chooseBotMove } from "@/lib/domino/bot";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
@@ -11,6 +13,7 @@ import {
   type GameState,
   type Side,
   type Tile,
+  type Variant,
   VARIANTS,
   createGame,
   nextHand,
@@ -21,16 +24,26 @@ import {
 import { cn } from "@/lib/utils";
 import { initSfx, sfx } from "@/lib/sfx";
 
-type Search = { v: string };
+type Search = {
+  v?: string;
+  pts?: number;
+  sala?: string;
+};
 
 export const Route = createFileRoute("/jugar")({
   ssr: false,
-  validateSearch: (s: Record<string, unknown>): Search => ({
-    v: typeof s["v"] === "string" ? (s["v"] as string) : "pairs-6",
-  }),
+  validateSearch: (s: Record<string, unknown>): Search => {
+    const rawPts = Number(s["pts"]);
+    const pts = !isNaN(rawPts) && rawPts >= 100 && rawPts <= 400 ? rawPts : 150;
+    return {
+      v: typeof s["v"] === "string" ? (s["v"] as string) : "pairs-6",
+      pts,
+      sala: typeof s["sala"] === "string" ? (s["sala"] as string) : undefined,
+    };
+  },
   head: () => ({
     meta: [
-      { title: "Jugar dominó — mesa contra la máquina | Domino" },
+      { title: "Jugar dominó — mesa contra la máquina y amigos | Domino" },
       {
         name: "description",
         content:
@@ -52,26 +65,36 @@ const BOT_NAMES = ["Yuniel", "Marisol", "El Chino"];
 const BOT_FLAGS = ["es", "mx", "do"];
 
 function Jugar() {
-  const { v } = Route.useSearch();
+  const { v, pts = 150, sala } = Route.useSearch();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { profile, progress } = useProfile(user?.id);
 
   const preset = VARIANTS.find((x) => x.id === v) ?? VARIANTS[0]!;
+  const [targetScore, setTargetScore] = useState<number>(() =>
+    Math.max(100, Math.min(400, Number(pts) || 150)),
+  );
   const [state, setState] = useState<GameState>(() =>
-    createGame({ targetScore: 100, variant: preset.variant }),
+    createGame({
+      targetScore: Math.max(100, Math.min(400, Number(pts) || 150)),
+      variant: preset.variant,
+    }),
   );
   const [thinking, setThinking] = useState<number | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [bubbles, setBubbles] = useState<ChatBubble[]>([]);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   useEffect(() => {
     initSfx();
   }, []);
 
   useEffect(() => {
-    setState(createGame({ targetScore: 100, variant: preset.variant }));
+    const validPts = Math.max(100, Math.min(400, Number(pts) || 150));
+    setTargetScore(validPts);
+    setState(createGame({ targetScore: validPts, variant: preset.variant }));
     sfx.deal();
-  }, [preset.id]);
+  }, [preset.id, preset.variant, pts]);
 
   const themeId = profile?.table_theme ?? "madera";
   const tileSkin = profile?.tile_skin ?? "hueso";
@@ -164,6 +187,17 @@ function Jugar() {
     );
   }
 
+  function handleRoomCreated(code: string, newTargetScore: number, newVariant: Variant) {
+    const variantKey = `${newVariant.mode}-${newVariant.maxPip}`;
+    void navigate({
+      to: "/jugar",
+      search: { v: variantKey, pts: newTargetScore, sala: code },
+    });
+    setTargetScore(newTargetScore);
+    setState(createGame({ targetScore: newTargetScore, variant: newVariant }));
+    setShowCreateModal(false);
+  }
+
   const last = state.events[state.events.length - 1];
   useEffect(() => {
     if (state.phase === "playing") return;
@@ -188,21 +222,61 @@ function Jugar() {
   return (
     <main className="mx-auto w-full max-w-6xl px-3 py-5 sm:px-6">
       <AppNav />
-      <header className="mb-4 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:flex sm:justify-between">
+      <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="truncate font-display text-2xl font-extrabold sm:text-3xl">
-            <span className="gold-text">Domino</span>
-          </h1>
-          <p className="text-xs text-muted-foreground">
-            {preset.label} · a {state.targetScore} · mano {state.handNumber}
-          </p>
+          <div className="flex items-center gap-2">
+            <h1 className="truncate font-display text-2xl font-extrabold sm:text-3xl">
+              <span className="gold-text">Domino</span>
+            </h1>
+            {sala && (
+              <span className="rounded-full bg-gold/20 px-2.5 py-0.5 text-xs font-mono font-bold text-gold">
+                Sala {sala}
+              </span>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mt-0.5">
+            <span>{preset.label}</span>
+            <span>·</span>
+            <div className="flex items-center gap-1.5">
+              <span>Meta:</span>
+              <select
+                value={targetScore}
+                onChange={(e) => {
+                  const newPts = Number(e.target.value);
+                  setTargetScore(newPts);
+                  setState((cur) => ({ ...cur, targetScore: newPts }));
+                }}
+                className="rounded-lg border border-border bg-card px-2 py-0.5 text-xs font-bold text-gold focus:border-gold focus:outline-none"
+              >
+                <option value={100}>100 pts</option>
+                <option value={150}>150 pts</option>
+                <option value={200}>200 pts</option>
+                <option value={250}>250 pts</option>
+                <option value={300}>300 pts</option>
+                <option value={400}>400 pts</option>
+              </select>
+            </div>
+            <span>·</span>
+            <span>Mano {state.handNumber}</span>
+          </div>
         </div>
-        <div className="flex shrink-0 items-center gap-3 rounded-2xl glass-panel px-3.5 py-2">
-          <Score label="Nosotros" value={state.scores[0]} tone="a" />
-          <div className="h-8 w-px bg-border" />
-          <Score label="Ellos" value={state.scores[1]} tone="b" />
-          <div className="h-8 w-px bg-border" />
-          <SoundToggle id="game-sound-toggle" size="sm" />
+
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center gap-1.5 rounded-2xl border border-gold/40 bg-gold/10 hover:bg-gold/20 px-3.5 py-2 text-xs font-bold text-gold transition-all"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Crear Sala</span>
+          </button>
+
+          <div className="flex shrink-0 items-center gap-3 rounded-2xl glass-panel px-3.5 py-2 border border-border/80">
+            <Score label="Nosotros" value={state.scores[0]} tone="a" />
+            <div className="h-8 w-px bg-border" />
+            <Score label="Ellos" value={state.scores[1]} tone="b" />
+            <div className="h-8 w-px bg-border" />
+            <SoundToggle id="game-sound-toggle" size="sm" />
+          </div>
         </div>
       </header>
 
@@ -211,23 +285,18 @@ function Jugar() {
           <div className="flex items-center gap-2">
             <span className="flex h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-400 animate-pulse" />
             <span className="text-foreground">
-              <strong className="text-gold">Mesa contra Bots (Gratis e Ilimitado):</strong> Juega
-              sin límite de tiempo. Para jugar con amigos o en torneos, puedes iniciar sesión.
+              <strong className="text-gold">Mesa de Dominó:</strong> Límite de {targetScore} puntos
+              (100 a 400 pts). Puedes invitar amigos compartiendo tu enlace.
             </span>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            <Link
-              to="/auth"
-              className="rounded-full bg-primary px-3.5 py-1 text-xs font-semibold text-primary-foreground transition-transform hover:scale-105"
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="flex items-center gap-1 rounded-full bg-primary px-3.5 py-1 text-xs font-semibold text-primary-foreground transition-transform hover:scale-105"
             >
-              Iniciar sesión
-            </Link>
-            <Link
-              to="/amigos"
-              className="rounded-full border border-border px-3 py-1 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Jugar con amigos
-            </Link>
+              <Users className="h-3.5 w-3.5" />
+              Crear sala para amigos
+            </button>
           </div>
         </div>
       ) : null}
@@ -274,6 +343,13 @@ function Jugar() {
           </div>
         </div>
       ) : null}
+
+      {/* Modal para Crear Sala y Enviar Enlaces a Amigos con límite de 100 a 400 pts */}
+      <CreateRoomModal
+        open={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onRoomCreated={handleRoomCreated}
+      />
 
       {toast ? (
         <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full bg-destructive px-5 py-2 text-sm font-medium text-destructive-foreground shadow-lg">

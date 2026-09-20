@@ -4,10 +4,18 @@ import { AppNav } from "@/components/AppNav";
 import { SoundToggle } from "@/components/SoundToggle";
 import { Flag } from "@/components/Flag";
 import { WebFooter } from "@/components/WebFooter";
+import { ProvisionalChoiceModal } from "@/components/domino/ProvisionalChoiceModal";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { usePlayCredits } from "@/hooks/usePlayCredits";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import {
+  confirmPurchaseAndDeductConsumedTime,
+  DEFAULT_PLAN_DURATIONS,
+  getLocalConfirmedPlan,
+  type Purchase,
+} from "@/lib/domino/purchases";
 import { getTheme } from "@/lib/domino/themes";
 import {
   unlocksFor,
@@ -42,13 +50,20 @@ function Ajustes() {
   const { t } = useI18n();
   const { user } = useAuth();
   const { profile, update, progress } = useProfile(user?.id);
-  const { premium, planExpiresAt, freeSeconds } = usePlayCredits();
+  const {
+    premium,
+    isOfficialPremium,
+    hasProvisional24h,
+    provisionalStatus,
+    pendingPurchase,
+    planExpiresAt,
+    freeSeconds,
+    refresh,
+  } = usePlayCredits();
 
   const [planName, setPlanName] = useState<string | null>(null);
-  const [pendingPurchase, setPendingPurchase] = useState<{
-    plan_id: string;
-    status: string;
-  } | null>(null);
+  const [approving, setApproving] = useState(false);
+  const [choiceModalOpen, setChoiceModalOpen] = useState(false);
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
@@ -61,15 +76,12 @@ function Ajustes() {
     void (async () => {
       const { data: purchases } = await supabase
         .from("purchases")
-        .select("plan_id, status, created_at")
+        .select("id, plan_id, method, reference, status, created_at")
+        .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(5);
 
       if (purchases && purchases.length > 0) {
-        const pending = purchases.find((p) => p.status === "pending");
-        if (pending) {
-          setPendingPurchase(pending);
-        }
         const approved = purchases.find((p) => p.status === "approved");
         const activePurchase = approved || purchases[0];
         if (activePurchase) {
@@ -87,6 +99,23 @@ function Ajustes() {
       }
     })();
   }, [user?.id]);
+
+  const handleApprovePurchase = async (purchaseToApprove: Purchase) => {
+    if (!user?.id) return;
+    setApproving(true);
+    const duration = DEFAULT_PLAN_DURATIONS[purchaseToApprove.plan_id] ?? 30;
+    const res = await confirmPurchaseAndDeductConsumedTime(purchaseToApprove, duration, user.id);
+    setApproving(false);
+    if (res.success) {
+      toast.success(
+        `¡Pago confirmado! Se restaron ${res.adjusted.consumedFormatted} consumidos en revisión de tu plan de ${res.adjusted.totalPlanDays} días.`,
+        { duration: 8000 },
+      );
+      await refresh();
+    } else {
+      toast.error(`No se pudo confirmar el pago: ${res.error}`);
+    }
+  };
 
   if (!user) {
     return (
@@ -153,12 +182,16 @@ function Ajustes() {
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="font-display text-lg font-bold">{t("settings.subscription")}</h2>
-                {premium ? (
-                  <span className="rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-[10px] font-bold text-emerald-400">
+                {hasProvisional24h ? (
+                  <span className="rounded-full bg-amber-500/20 px-2.5 py-0.5 text-[10px] font-bold text-amber-300 ring-1 ring-amber-400/40">
+                    24H PROVISIONAL (REVISIÓN)
+                  </span>
+                ) : isOfficialPremium ? (
+                  <span className="rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-[10px] font-bold text-emerald-400 ring-1 ring-emerald-500/40">
                     ACTIVO
                   </span>
                 ) : (
-                  <span className="rounded-full bg-amber-500/20 px-2.5 py-0.5 text-[10px] font-medium text-amber-300">
+                  <span className="rounded-full bg-zinc-500/20 px-2.5 py-0.5 text-[10px] font-medium text-zinc-300">
                     GRATIS
                   </span>
                 )}
@@ -175,7 +208,131 @@ function Ajustes() {
         </div>
 
         <div className="mt-4 rounded-xl border border-border/70 bg-card/60 p-4">
-          {premium ? (
+          {/* CASO 1: COMPRA EN REVISIÓN */}
+          {pendingPurchase ? (
+            <div className="space-y-3.5">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-3">
+                <div className="flex items-center gap-2">
+                  <span className="relative flex h-3 w-3">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75"></span>
+                    <span className="relative inline-flex h-3 w-3 rounded-full bg-amber-500"></span>
+                  </span>
+                  <span className="font-display text-base font-bold text-foreground">
+                    {t("settings.pendingApproval")}: Plan {pendingPurchase.plan_id}
+                  </span>
+                </div>
+                {provisionalStatus.hasProvisional24h ? (
+                  <div className="rounded-full bg-amber-500/15 px-3 py-1 text-xs font-bold text-amber-300 ring-1 ring-amber-500/30">
+                    ⏱️ {t("settings.provisionalTimeLeft")}: {provisionalStatus.formattedRemaining}
+                  </div>
+                ) : provisionalStatus.isWaitingApproval ? (
+                  <div className="rounded-full bg-blue-500/15 px-3 py-1 text-xs font-bold text-blue-300 ring-1 ring-blue-500/30">
+                    ⏳ Esperando aprobación (Duración 100% intacta)
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setChoiceModalOpen(true)}
+                    className="rounded-full bg-amber-500/20 px-3 py-1 text-xs font-bold text-amber-300 ring-1 ring-amber-500/40 hover:bg-amber-500/30"
+                  >
+                    ⚡ Configurar acceso
+                  </button>
+                )}
+              </div>
+
+              {provisionalStatus.hasProvisional24h ? (
+                <>
+                  <div className="grid gap-2 text-xs sm:grid-cols-2">
+                    <div>
+                      <span className="text-muted-foreground">Modalidad de acceso:</span>{" "}
+                      <strong className="font-semibold text-amber-300">
+                        24 horas de juego provisional activo
+                      </strong>
+                    </div>
+                    <div className="sm:text-right">
+                      <span className="text-muted-foreground">Tiempo consumido:</span>{" "}
+                      <strong className="font-bold text-gold">
+                        {provisionalStatus.formattedConsumed}
+                      </strong>
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs leading-relaxed text-amber-200/90">
+                    <p className="font-semibold text-amber-300">
+                      🎮 24h de cortesía activas mientras se revisa tu pago
+                    </p>
+                    <p className="mt-1 text-muted-foreground">
+                      {t("settings.deductionNotice")} (se descontará automáticamente al aprobarse la
+                      transacción).
+                    </p>
+                  </div>
+                </>
+              ) : provisionalStatus.isWaitingApproval ? (
+                <>
+                  <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-3 text-xs leading-relaxed text-blue-200/90">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <p className="font-semibold text-blue-300">
+                          ⏳ Esperando verificación de la transacción
+                        </p>
+                        <p className="mt-1 text-muted-foreground">
+                          Tu plan conserva su duración íntegra de{" "}
+                          {DEFAULT_PLAN_DURATIONS[pendingPurchase.plan_id] ?? 30} días (0s
+                          consumidos). La aprobación puede tardar un poco.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="mt-2.5 pt-2 border-t border-blue-500/20">
+                      <button
+                        onClick={() => setChoiceModalOpen(true)}
+                        className="text-xs font-semibold text-amber-400 hover:text-amber-300 underline underline-offset-2"
+                      >
+                        ⚡ ¿Prefieres no esperar? Cambiar y activar 24h de cortesía provisionales →
+                      </button>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-300">
+                  <p className="font-semibold text-amber-200">
+                    ⚡ Elige cómo disfrutar tu plan mientras se revisa:
+                  </p>
+                  <p className="mt-1 text-muted-foreground">
+                    Puedes activar 24h provisionales de inmediato o esperar la aprobación para no
+                    consumir tiempo.
+                  </p>
+                  <button
+                    onClick={() => setChoiceModalOpen(true)}
+                    className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-amber-500 px-3.5 py-1 text-xs font-bold text-slate-950 hover:bg-amber-400"
+                  >
+                    Elegir opción de acceso
+                  </button>
+                </div>
+              )}
+
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                <div className="text-[11px] text-muted-foreground">
+                  Método: <strong className="text-foreground">{pendingPurchase.method}</strong> ·
+                  Ref: <code className="text-foreground">{pendingPurchase.reference || "—"}</code>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setChoiceModalOpen(true)}
+                    className="rounded-full border border-border bg-muted/40 px-3 py-1.5 text-xs font-medium text-foreground transition hover:bg-muted"
+                  >
+                    Opciones 24h
+                  </button>
+                  <button
+                    onClick={() => handleApprovePurchase(pendingPurchase)}
+                    disabled={approving}
+                    className="rounded-full bg-amber-500 px-4 py-1.5 text-xs font-bold text-slate-950 transition hover:bg-amber-400 disabled:opacity-50"
+                  >
+                    {approving ? "Confirmando…" : "✓ Confirmar pago (Aprobar)"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : isOfficialPremium ? (
+            /* CASO 2: PLAN OFICIAL ACTIVO (COMPRA CONFIRMADA) */
             <div className="space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-3">
                 <div className="flex items-center gap-2">
@@ -220,6 +377,7 @@ function Ajustes() {
               </div>
             </div>
           ) : (
+            /* CASO 3: CUENTA GRATUITA */
             <div className="space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
@@ -236,13 +394,6 @@ function Ajustes() {
                 </span>
               </div>
               <p className="text-xs text-muted-foreground">{t("settings.freePlanDesc")}</p>
-              {pendingPurchase ? (
-                <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-300">
-                  ⏳ <strong>{t("settings.pendingApproval")}:</strong> Registraste un pago por{" "}
-                  <span className="font-semibold text-white">{pendingPurchase.plan_id}</span>. Se
-                  activará en cuanto el administrador apruebe la transferencia.
-                </div>
-              ) : null}
             </div>
           )}
         </div>
@@ -338,6 +489,17 @@ function Ajustes() {
       <div className="mt-8">
         <WebFooter id="settings-web-footer" />
       </div>
+
+      {pendingPurchase && (
+        <ProvisionalChoiceModal
+          open={choiceModalOpen}
+          purchase={pendingPurchase}
+          onClose={() => setChoiceModalOpen(false)}
+          onChoiceConfirmed={() => {
+            void refresh();
+          }}
+        />
+      )}
     </main>
   );
 }

@@ -256,16 +256,14 @@ export function GameTable({
         )}
 
         <div className="relative z-10 grid min-h-[62vh] grid-rows-[auto_1fr_auto] gap-2 p-3 sm:min-h-[68vh] sm:p-5">
-          <div className="flex justify-center">
-            <OpponentRow
-              seat={topSeat}
-              state={state}
-              seats={seats}
-              mySeat={mySeat}
-              thinkingSeat={thinkingSeat}
-              layout="top"
-            />
-          </div>
+          <OpponentRow
+            seat={topSeat}
+            state={state}
+            seats={seats}
+            mySeat={mySeat}
+            thinkingSeat={thinkingSeat}
+            layout="top"
+          />
 
           <div
             className={cn(
@@ -488,11 +486,12 @@ function SeatBadge({
         {partner ? " · pareja" : ""}
       </span>
       {info?.level ? <span className="shrink-0 opacity-70">n{info.level}</span> : null}
-      {!me ? (
-        <span className="shrink-0 rounded-full bg-black/25 px-1.5 py-0.5 text-[10px] font-bold text-white/90">
-          {count}
-        </span>
-      ) : null}
+      <span
+        title={`${count} fichas restantes`}
+        className="shrink-0 rounded-full bg-black/35 px-2 py-0.5 text-[10px] font-bold text-white/95"
+      >
+        {count} {compact ? "f" : count === 1 ? "ficha" : "fichas"}
+      </span>
       {thinking ? <span className="shrink-0 animate-pulse text-gold">•••</span> : null}
       {info && info.connected === false ? (
         <span className="shrink-0 text-destructive">⚠</span>

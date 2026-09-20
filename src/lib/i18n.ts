@@ -85,6 +85,14 @@ export const TRANSLATIONS: Record<SupportedLanguage, Record<string, string>> = {
     "settings.hours": "horas",
     "settings.minutes": "minutos",
     "settings.expired": "Plan expirado",
+    "settings.provisionalActive": "24h provisionales (En revisión)",
+    "settings.provisionalDesc":
+      "Tienes 24 horas de juego ilimitado mientras se confirma tu pago. Al confirmarse, el tiempo consumido se restará automáticamente de tu plan comprado.",
+    "settings.provisionalTimeLeft": "Tiempo restante de cortesía",
+    "settings.consumedReviewTime": "Tiempo consumido en revisión (se restará al aprobar)",
+    "settings.confirmPurchaseSimulation": "Aprobar pago y descontar tiempo",
+    "settings.deductionNotice":
+      "El tiempo que consumas mientras tu compra esté en revisión se restará automáticamente del total de días de tu plan cuando sea aprobado.",
   },
   en: {
     // Nav
@@ -158,6 +166,14 @@ export const TRANSLATIONS: Record<SupportedLanguage, Record<string, string>> = {
     "settings.hours": "hours",
     "settings.minutes": "minutes",
     "settings.expired": "Plan expired",
+    "settings.provisionalActive": "24h Provisional Play (Under review)",
+    "settings.provisionalDesc":
+      "You have 24 hours of unlimited play while your payment is confirmed. Upon confirmation, consumed time will automatically be deducted from your plan.",
+    "settings.provisionalTimeLeft": "Courtesy play time remaining",
+    "settings.consumedReviewTime": "Time consumed under review (deducted upon approval)",
+    "settings.confirmPurchaseSimulation": "Approve payment and deduct time",
+    "settings.deductionNotice":
+      "Time consumed while your purchase is under review is automatically deducted from your purchased plan once approved.",
   },
   fr: {
     // Nav
@@ -232,6 +248,14 @@ export const TRANSLATIONS: Record<SupportedLanguage, Record<string, string>> = {
     "settings.hours": "heures",
     "settings.minutes": "minutes",
     "settings.expired": "Abonnement expiré",
+    "settings.provisionalActive": "24h provisoires (En attente)",
+    "settings.provisionalDesc":
+      "Vous bénéficiez de 24h de jeu illimité pendant la vérification de votre paiement. Une fois validé, le temps consommé sera déduit de votre abonnement.",
+    "settings.provisionalTimeLeft": "Temps de courtoisie restant",
+    "settings.consumedReviewTime": "Temps consommé en révision (déduit à la validation)",
+    "settings.confirmPurchaseSimulation": "Valider le paiement et déduire le temps",
+    "settings.deductionNotice":
+      "Le temps que vous consommez pendant la vérification sera automatiquement déduit du total des jours de votre abonnement validé.",
   },
   pt: {
     // Nav
@@ -305,6 +329,14 @@ export const TRANSLATIONS: Record<SupportedLanguage, Record<string, string>> = {
     "settings.hours": "horas",
     "settings.minutes": "minutos",
     "settings.expired": "Plano expirado",
+    "settings.provisionalActive": "24h provisórias (Em análise)",
+    "settings.provisionalDesc":
+      "Você tem 24 horas de jogo ilimitado enquanto seu pagamento é confirmado. Após a confirmação, o tempo consumido será deduzido do seu plano.",
+    "settings.provisionalTimeLeft": "Tempo de cortesia restante",
+    "settings.consumedReviewTime": "Tempo consumido em análise (descontado na aprovação)",
+    "settings.confirmPurchaseSimulation": "Aprovar pagamento e descontar tempo",
+    "settings.deductionNotice":
+      "O tempo que você consumir enquanto sua compra estiver em análise será deduzido automaticamente da duração do seu plano quando aprovado.",
   },
 };
 
