@@ -13,8 +13,12 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AjustesRouteImport } from './routes/ajustes'
 import { Route as AmigosRouteImport } from './routes/amigos'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AyudaRouteImport } from './routes/ayuda'
+import { Route as EspectarRouteImport } from './routes/espectar'
 import { Route as JugarRouteImport } from './routes/jugar'
+import { Route as PlanesRouteImport } from './routes/planes'
 import { Route as RankingRouteImport } from './routes/ranking'
+import { Route as TorneosRouteImport } from './routes/torneos'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -36,14 +40,34 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AyudaRoute = AyudaRouteImport.update({
+  id: '/ayuda',
+  path: '/ayuda',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EspectarRoute = EspectarRouteImport.update({
+  id: '/espectar',
+  path: '/espectar',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const JugarRoute = JugarRouteImport.update({
   id: '/jugar',
   path: '/jugar',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PlanesRoute = PlanesRouteImport.update({
+  id: '/planes',
+  path: '/planes',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RankingRoute = RankingRouteImport.update({
   id: '/ranking',
   path: '/ranking',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TorneosRoute = TorneosRouteImport.update({
+  id: '/torneos',
+  path: '/torneos',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -52,16 +76,24 @@ export interface FileRoutesByFullPath {
   '/ajustes': typeof AjustesRoute
   '/amigos': typeof AmigosRoute
   '/auth': typeof AuthRoute
+  '/ayuda': typeof AyudaRoute
+  '/espectar': typeof EspectarRoute
   '/jugar': typeof JugarRoute
+  '/planes': typeof PlanesRoute
   '/ranking': typeof RankingRoute
+  '/torneos': typeof TorneosRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/ajustes': typeof AjustesRoute
   '/amigos': typeof AmigosRoute
   '/auth': typeof AuthRoute
+  '/ayuda': typeof AyudaRoute
+  '/espectar': typeof EspectarRoute
   '/jugar': typeof JugarRoute
+  '/planes': typeof PlanesRoute
   '/ranking': typeof RankingRoute
+  '/torneos': typeof TorneosRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -69,16 +101,50 @@ export interface FileRoutesById {
   '/ajustes': typeof AjustesRoute
   '/amigos': typeof AmigosRoute
   '/auth': typeof AuthRoute
+  '/ayuda': typeof AyudaRoute
+  '/espectar': typeof EspectarRoute
   '/jugar': typeof JugarRoute
+  '/planes': typeof PlanesRoute
   '/ranking': typeof RankingRoute
+  '/torneos': typeof TorneosRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/ajustes' | '/amigos' | '/auth' | '/jugar' | '/ranking'
+  fullPaths:
+    | '/'
+    | '/ajustes'
+    | '/amigos'
+    | '/auth'
+    | '/ayuda'
+    | '/espectar'
+    | '/jugar'
+    | '/planes'
+    | '/ranking'
+    | '/torneos'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/ajustes' | '/amigos' | '/auth' | '/jugar' | '/ranking'
+  to:
+    | '/'
+    | '/ajustes'
+    | '/amigos'
+    | '/auth'
+    | '/ayuda'
+    | '/espectar'
+    | '/jugar'
+    | '/planes'
+    | '/ranking'
+    | '/torneos'
   id:
-    '__root__' | '/' | '/ajustes' | '/amigos' | '/auth' | '/jugar' | '/ranking'
+    | '__root__'
+    | '/'
+    | '/ajustes'
+    | '/amigos'
+    | '/auth'
+    | '/ayuda'
+    | '/espectar'
+    | '/jugar'
+    | '/planes'
+    | '/ranking'
+    | '/torneos'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -86,8 +152,12 @@ export interface RootRouteChildren {
   AjustesRoute: typeof AjustesRoute
   AmigosRoute: typeof AmigosRoute
   AuthRoute: typeof AuthRoute
+  AyudaRoute: typeof AyudaRoute
+  EspectarRoute: typeof EspectarRoute
   JugarRoute: typeof JugarRoute
+  PlanesRoute: typeof PlanesRoute
   RankingRoute: typeof RankingRoute
+  TorneosRoute: typeof TorneosRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -120,6 +190,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/ayuda': {
+      id: '/ayuda'
+      path: '/ayuda'
+      fullPath: '/ayuda'
+      preLoaderRoute: typeof AyudaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/espectar': {
+      id: '/espectar'
+      path: '/espectar'
+      fullPath: '/espectar'
+      preLoaderRoute: typeof EspectarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/jugar': {
       id: '/jugar'
       path: '/jugar'
@@ -127,11 +211,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof JugarRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/planes': {
+      id: '/planes'
+      path: '/planes'
+      fullPath: '/planes'
+      preLoaderRoute: typeof PlanesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/ranking': {
       id: '/ranking'
       path: '/ranking'
       fullPath: '/ranking'
       preLoaderRoute: typeof RankingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/torneos': {
+      id: '/torneos'
+      path: '/torneos'
+      fullPath: '/torneos'
+      preLoaderRoute: typeof TorneosRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -142,8 +240,12 @@ const rootRouteChildren: RootRouteChildren = {
   AjustesRoute: AjustesRoute,
   AmigosRoute: AmigosRoute,
   AuthRoute: AuthRoute,
+  AyudaRoute: AyudaRoute,
+  EspectarRoute: EspectarRoute,
   JugarRoute: JugarRoute,
+  PlanesRoute: PlanesRoute,
   RankingRoute: RankingRoute,
+  TorneosRoute: TorneosRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
