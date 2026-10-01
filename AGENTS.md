@@ -1,0 +1,1 @@
+- Mantener el motor de reglas independiente del tablero: el trazado de fichas se calcula en un módulo puro para permitir pruebas de contacto y colisiones.

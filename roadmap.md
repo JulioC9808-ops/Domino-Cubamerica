@@ -1,0 +1,5 @@
+- [ ] Reconstruir geometría BoardSnake y comprobar giros, dobles y cadenas largas.
+- [ ] Afinar selección de puntas, controles táctiles, zoom/pan y pantalla completa.
+- [ ] Añadir golpe decisivo, lectura segura de mesa, iluminación y preferencias.
+- [ ] Aplicar marca LA MESA 28 y revisar juego online, perfiles y seguridad sin alterar reglas existentes.
+- [ ] Verificar escritorio/móvil y pruebas; documentar cualquier límite real.
